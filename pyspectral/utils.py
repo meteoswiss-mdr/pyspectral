@@ -24,6 +24,7 @@
 """Utility functions"""
 
 import numpy as np
+import os
 
 BANDNAMES = {'VIS006': 'VIS0.6',
              'VIS008': 'VIS0.8',
@@ -44,10 +45,31 @@ INSTRUMENTS = {'NOAA-19': 'avhrr/3',
                'NOAA-17': 'avhrr/3',
                'NOAA-16': 'avhrr/3',
                'NOAA-15': 'avhrr/3',
+               'NOAA-14': 'avhrr/2',
+               'NOAA-12': 'avhrr/2',
+               'NOAA-11': 'avhrr/2',
+               'NOAA-9': 'avhrr/2',
+               'NOAA-7': 'avhrr/2',
+               'NOAA-10': 'avhrr/1',
+               'NOAA-8': 'avhrr/1',
+               'NOAA-6': 'avhrr/1',
+               'TIROS-N': 'avhrr/1',
                'Metop-A': 'avhrr/3',
                'Metop-B': 'avhrr/3',
                'Metop-C': 'avhrr/3'
                }
+
+
+HTTP_PYSPECTRAL_RSR = "https://dl.dropboxusercontent.com/u/37482654/pyspectral_rsr_data.tgz"
+
+from os.path import expanduser
+HOME = expanduser("~")
+LOCAL_DEST = os.path.join(HOME, ".local/share/pyspectral")
+try:
+    os.makedirs(LOCAL_DEST)
+except OSError:
+    if not os.path.isdir(LOCAL_DEST):
+        raise
 
 
 def convert2wavenumber(rsr):
@@ -65,7 +87,8 @@ def convert2wavenumber(rsr):
                     # micro meters to cm
                     wnum = 1. / (1e-4 * rsr[chname][det][sat])
                     retv[chname][det]['wavenumber'] = wnum[::-1]
-                else:
+                elif sat == "response":
+                    # Flip the response array:
                     if type(rsr[chname][det][sat]) is dict:
                         retv[chname][det][sat] = {}
                         for name in rsr[chname][det][sat].keys():
@@ -122,3 +145,104 @@ def sort_data(x_vals, y_vals):
     y_vals = y_vals[mask]
 
     return x_vals, y_vals
+
+
+def convert2hdf5(ClassIn, platform_name, bandnames, scale=1e-06):
+    """Retrieve original RSR data and convert to internal hdf5 format.  
+
+    *scale* is the number which has to be multiplied to the wavelength data in
+    order to get it in the SI unit meter
+
+    """
+    import h5py
+    import os.path
+
+    instr = ClassIn(bandnames[0], platform_name)
+    instr_name = instr.instrument.replace('/', '')
+    filename = os.path.join(instr.output_dir,
+                            "rsr_%s_%s.h5" % (instr_name,
+                                              platform_name))
+
+    with h5py.File(filename, "w") as h5f:
+        h5f.attrs['description'] = ('Relative Spectral Responses for ' +
+                                    instr.instrument.upper())
+        h5f.attrs['platform_name'] = platform_name
+        h5f.attrs['band_names'] = bandnames
+
+        for chname in bandnames:
+            aatsr = ClassIn(chname, platform_name)
+            grp = h5f.create_group(chname)
+            wvl = aatsr.rsr['wavelength'][~np.isnan(aatsr.rsr['wavelength'])]
+            rsp = aatsr.rsr['response'][~np.isnan(aatsr.rsr['wavelength'])]
+            grp.attrs['central_wavelength'] = get_central_wave(wvl, rsp)
+            arr = aatsr.rsr['wavelength']
+            dset = grp.create_dataset('wavelength', arr.shape, dtype='f')
+            dset.attrs['unit'] = 'm'
+            dset.attrs['scale'] = scale
+            dset[...] = arr
+            arr = aatsr.rsr['response']
+            dset = grp.create_dataset('response', arr.shape, dtype='f')
+            dset[...] = arr
+
+
+def get_rayleigh_reflectance(parms, sunz, satz):
+    """Get the Rayleigh reflectance applying the polynomial fit parameters
+
+    P(x,y) = c_{00} + c_{10}x + ...+ c_{n0}x^n +
+             c_{01}y + ...+ c_{0n}y^n +
+             c_{11}xy + c_{12}xy^2 + ... +
+             c_{1(n-1)}xy^{n-1}+ ... + c_{(n-1)1}x^{n-1}y
+
+    x = relative azimuth difference angle
+    y = secant of the satellite zenith angle
+    """
+
+    sec = 1. / np.cos(np.deg2rad(satz))
+    sunsec = 1. / np.cos(np.deg2rad(sunz))
+
+    res = (parms[0] +
+           parms[1] * sunsec +
+           parms[2] * sunsec ** 2 +
+           parms[3] * sunsec ** 3 +
+           parms[4] * sunsec ** 4 +
+           parms[5] * sunsec ** 5 +
+           parms[6] * sec +
+           parms[7] * sec ** 2 +
+           parms[8] * sec ** 3 +
+           parms[9] * sec ** 4 +
+           parms[10] * sec ** 5 +
+           parms[11] * sunsec * sec +
+           parms[12] * sunsec * sec ** 2 +
+           parms[13] * sunsec * sec ** 3 +
+           parms[14] * sunsec * sec ** 4 +
+           parms[15] * sunsec ** 2 * sec +
+           parms[16] * sunsec ** 2 * sec ** 2 +
+           parms[17] * sunsec ** 2 * sec ** 3 +
+           parms[18] * sunsec ** 3 * sec +
+           parms[19] * sunsec ** 3 * sec ** 2 +
+           parms[20] * sunsec ** 4 * sec)
+
+    return res
+
+
+def download_rsr():
+    """Download the pre-compiled hdf5 formatet relative spectral response functions
+    from the internet
+
+    """
+
+    #
+    import tarfile
+    import requests
+    from tqdm import tqdm
+
+    response = requests.get(HTTP_PYSPECTRAL_RSR)
+    filename = os.path.join(LOCAL_DEST, "pyspectral_rsr_data.tgz")
+    with open(filename, "wb") as handle:
+        for data in tqdm(response.iter_content()):
+            handle.write(data)
+
+    tar = tarfile.open(filename)
+    tar.extractall(LOCAL_DEST)
+    tar.close()
+    os.remove(filename)
