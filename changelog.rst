@@ -1,6 +1,83 @@
 Changelog
 =========
 
+v0.3.3 (2017-01-13)
+-------------------
+
+Fix
+~~~
+
+- Bugfix: include pyspectral/etc instead of etc. [Adam.Dybbroe]
+
+Other
+~~~~~
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.3.2 → 0.3.3. [Adam.Dybbroe]
+
+- Merge branch 'pre-master' into release-v0.3.3. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.2' into pre-master. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.2' [Adam.Dybbroe]
+
+v0.3.2 (2017-01-13)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.3.1 → 0.3.2. [Adam.Dybbroe]
+
+- Merge branch 'pre-master' into release-v0.3.2. [Adam.Dybbroe]
+
+- Bugfix, getting the filename of the config file right with
+  pkg_resources. [Adam.Dybbroe]
+
+- Fix problem finding the config file in certain environments.
+  [Adam.Dybbroe]
+
+  Include pyspectral.cfg in the package_data instead of the data_files.
+  Move pyspctral.cfg down to the pyspectral package dir and use pkg_resources
+
+- Bugfix. Allow rayleigh reflectances (set to zero) outide the 400-800
+  nm range. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.1' into pre-master. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.1' [Adam.Dybbroe]
+
+v0.3.1 (2016-11-28)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.3.0 → 0.3.1. [Adam.Dybbroe]
+
+- Merge branch 'pre-master' into release-v0.3.1. [Adam.Dybbroe]
+
+- Add simple plot script. [Adam.Dybbroe]
+
+- Add raw GOES-R abi rsr-reader and simple plot script. [Adam.Dybbroe]
+
+- Merge branch 'pre-master' into release-v0.3.1. [Adam.Dybbroe]
+
+- Add description of Rayleigh correction capability. [Adam.Dybbroe]
+
+- Update documentation with the built-in default configuration.
+  [Adam.Dybbroe]
+
+- Fix default configuration using expanduser. [Adam.Dybbroe]
+
+- Add pandas to extra requirement. [Adam.Dybbroe]
+
+- Add more instruments to the default cfg file. Remove deprecated
+  template file. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.0' into pre-master. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.0' [Adam.Dybbroe]
+
 v0.3.0 (2016-11-21)
 -------------------
 
