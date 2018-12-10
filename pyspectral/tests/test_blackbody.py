@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016 Adam.Dybbroe
+# Copyright (c) 2013, 2014, 2015, 2016, 2017 Adam.Dybbroe
 
 # Author(s):
 
@@ -26,6 +26,8 @@ from pyspectral.blackbody import (blackbody, blackbody_wn,
                                   blackbody_wn_rad2temp,
                                   blackbody_rad2temp)
 
+from pyspectral.tests.unittest_helpers import assertNumpyArraysEqual
+
 import unittest
 import numpy as np
 
@@ -39,13 +41,6 @@ WN_RAD_11MICRON_300KELVIN = 0.00115835441353
 WN_RAD_11MICRON_301KELVIN = 0.00117547716523
 
 __unittest = True
-
-
-def assertNumpyArraysEqual(self, other):
-    if self.shape != other.shape:
-        raise AssertionError("Shapes don't match")
-    if not np.allclose(self, other):
-        raise AssertionError("Elements don't match!")
 
 
 class TestBlackbody(unittest.TestCase):
@@ -86,7 +81,6 @@ class TestBlackbody(unittest.TestCase):
         """
         wavenumber = 90909.1  # 11 micron band
         black = blackbody_wn((wavenumber, ), [300., 301])
-        print black
         self.assertEqual(black.shape[0], 2)
         self.assertAlmostEqual(black[0], WN_RAD_11MICRON_300KELVIN)
         self.assertAlmostEqual(black[1], WN_RAD_11MICRON_301KELVIN)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016 Adam.Dybbroe
+# Copyright (c) 2013-2018 Adam.Dybbroe
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c14526.ad.smhi.se>
+#   Adam.Dybbroe <adam.dybbroe@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,25 +31,33 @@ from pyspectral.tests import (test_rayleigh,
                               test_reflectance,
                               test_solarflux,
                               test_utils,
-                              test_rad_tb_conversions)
-import unittest
-import doctest
+                              test_rad_tb_conversions,
+                              test_rsr_reader,
+                              test_atm_correction_ir)
 
+import sys
+if sys.version_info < (2, 7):
+    import unittest2 as unittest
+else:
+    import unittest
+
+import doctest
 import os
 TRAVIS = os.environ.get("TRAVIS", False)
+APPVEYOR = os.environ.get("APPVEYOR", False)
 
 
 def suite():
     """The global test suite.
     """
     mysuite = unittest.TestSuite()
-    if not TRAVIS:
+    if not TRAVIS and not APPVEYOR:
         # Test sphinx documentation pages:
         mysuite.addTests(doctest.DocFileSuite('../../doc/usage.rst'))
         mysuite.addTests(doctest.DocFileSuite('../../doc/rad_definitions.rst'))
-        mysuite.addTests(doctest.DocFileSuite('../../doc/seviri_example.rst'))
+        # mysuite.addTests(doctest.DocFileSuite('../../doc/seviri_example.rst'))
         mysuite.addTests(doctest.DocFileSuite('../../doc/37_reflectance.rst'))
-        # # Test the documentation strings
+        # Test the documentation strings
         mysuite.addTests(doctest.DocTestSuite(solar))
         mysuite.addTests(doctest.DocTestSuite(near_infrared_reflectance))
         mysuite.addTests(doctest.DocTestSuite(blackbody))
@@ -61,8 +69,9 @@ def suite():
     mysuite.addTests(test_reflectance.suite())
     mysuite.addTests(test_utils.suite())
     mysuite.addTests(test_rayleigh.suite())
-
+    mysuite.addTests(test_rsr_reader.suite())
     return mysuite
+
 
 if __name__ == '__main__':
     unittest.TextTestRunner(verbosity=2).run(suite())

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015 Adam.Dybbroe
+# Copyright (c) 2013-2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -23,12 +23,22 @@
 """Unit testing the 3.7 micron reflectance calculations"""
 
 from pyspectral.near_infrared_reflectance import Calculator
-
-import unittest
 import numpy as np
+import sys
+if sys.version_info < (2, 7):
+    import unittest2 as unittest
+else:
+    import unittest
+if sys.version_info < (3,):
+    from mock import patch
+else:
+    from unittest.mock import patch
 
-TEST_RSR = {'20': {}}
+
+TEST_RSR = {'20': {},
+            '99': {}}
 TEST_RSR['20']['det-1'] = {}
+TEST_RSR['20']['det-1']['central_wavelength'] = 3.780281935
 TEST_RSR['20']['det-1']['wavelength'] = np.array([
     3.6123999, 3.6163599, 3.6264927, 3.6363862, 3.646468,
     3.6564937, 3.6664478, 3.6765388, 3.6865413, 3.6964585,
@@ -46,6 +56,22 @@ TEST_RSR['20']['det-1']['response'] = np.array([
     0.95687, 0.91037, 0.91058, 0.94256, 0.94719, 0.94808,
     1., 0.92676, 0.67429, 0.44715, 0.27762, 0.14852,
     0.07141, 0.04151, 0.02925, 0.02085, 0.01414, 0.01], dtype='double')
+
+TEST_RSR['99']['det-1'] = {}
+TEST_RSR['99']['det-1']['central_wavelength'] = 10.8
+TEST_RSR['99']['det-1']['wavelength'] = np.array([
+    10.6123999,
+    10.7563652,
+    10.8563975,
+    10.9064275,
+    10.9535347], dtype='double')
+
+TEST_RSR['99']['det-1']['response'] = np.array([
+    0.33792,
+    0.86008,
+    1.,
+    0.67429,
+    0.07141], dtype='double')
 
 TEST_RSR_WN = {'20': {}}
 TEST_RSR_WN['20']['det-1'] = {}
@@ -68,37 +94,9 @@ RESP = np.array([0.01, 0.01414, 0.02085, 0.02925, 0.04151,
                  0.0849, 0.05028, 0.03226, 0.01987, 0.0118,
                  0.01], dtype='float32')
 
+TEST_RSR_WN['20']['det-1']['central_wavelength'] = 3.780281935
 TEST_RSR_WN['20']['det-1']['wavenumber'] = WVN
 TEST_RSR_WN['20']['det-1']['response'] = RESP
-
-
-class ProductionClass(Calculator):
-
-    """ProductionClass"""
-
-    def get_rsr(self):
-        self.rsr = TEST_RSR
-        self._wave_unit = '1e-6 m'
-        self._wave_si_scale = 1e-6
-
-
-class ProductionClassWN(Calculator):
-
-    """Wrapper for wavenumber calculations..."""
-
-    def __init__(self, platform_name, instrument, bandname,
-                 solar_flux=None, **options):
-        self.wavespace = 'wavenumber'
-        self.get_rsr()
-        super(ProductionClassWN, self).__init__(platform_name, instrument,
-                                                bandname, solar_flux=None,
-                                                **options)
-
-    def get_rsr(self):
-        """Get RSR"""
-        self.rsr = TEST_RSR_WN
-        self._wave_unit = 'cm-1'
-        self._wave_si_scale = 100.
 
 
 class TestReflectance(unittest.TestCase):
@@ -113,36 +111,79 @@ class TestReflectance(unittest.TestCase):
         """Test calculating the integral of the relative spectral response
         function. 
         """
-        refl37 = ProductionClass('EOS-Aqua', 'modis', '20')
-        expected = 0.18563451
+        with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
+            instance = mymock.return_value
+            instance.rsr = TEST_RSR
+            instance.unit = '1e-6 m'
+            instance.si_scale = 1e-6
+
+            refl37 = Calculator('EOS-Aqua', 'modis', '20')
+
+        expected = 1.8563451e-07  # unit = 'm' (meter)
         self.assertAlmostEqual(refl37.rsr_integral, expected)
 
-        refl37 = ProductionClassWN(
-            'EOS-Aqua', 'modis', '20', wavespace='wavenumber')
-        expected = 130.00391
-        self.assertAlmostEqual(refl37.rsr_integral, expected, 4)
+        with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
+            instance = mymock.return_value
+            instance.rsr = TEST_RSR_WN
+            instance.unit = 'cm-1'
+            instance.si_scale = 100.
+
+            refl37 = Calculator('EOS-Aqua', 'modis', '20', wavespace='wavenumber')
+
+        expected = 13000.385  # SI units = 'm-1' (1/meter)
+        res = refl37.rsr_integral
+        self.assertAlmostEqual(res / expected, 1.0, 6)
 
     def test_reflectance(self):
         """Test the derivation of the reflective part of a 3.7 micron band"""
-        refl37 = ProductionClass('EOS-Aqua', 'modis', '20')
 
-        sunz = 80.
-        tb3 = 290.
-        tb4 = 282.
-        refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
-        self.assertAlmostEqual(refl, 0.251245010648, 6)
+        with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
+            instance = mymock.return_value
+            instance.rsr = TEST_RSR
+            instance.unit = '1e-6 m'
+            instance.si_scale = 1e-6
 
-        sunz = 80.
-        tb3 = 295.
-        tb4 = 282.
-        refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
-        self.assertAlmostEqual(refl, 0.452497961)
+            with self.assertRaises(NotImplementedError):
+                dummy = Calculator('Suomi-NPP', 'viirs', 10.8)
 
-        sunz = 50.
-        tb3 = 300.
-        tb4 = 285.
+            refl37 = Calculator('Suomi-NPP', 'viirs', 3.7)
+            self.assertEqual(refl37.bandwavelength, 3.7)
+            self.assertEqual(refl37.bandname, '20')
+
+        with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
+            instance = mymock.return_value
+            instance.rsr = TEST_RSR
+            instance.unit = '1e-6 m'
+            instance.si_scale = 1e-6
+
+            refl37 = Calculator('EOS-Aqua', 'modis', '20')
+
+        sunz = np.array([80.])
+        tb3 = np.array([290.])
+        tb4 = np.array([282.])
         refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
-        self.assertAlmostEqual(refl, 0.1189217)
+        self.assertAlmostEqual(refl.data[0], 0.251245010648, 6)
+
+        tb3x = refl37.emissive_part_3x()
+        self.assertAlmostEqual(tb3x, 276.213054, 6)
+
+        sunz = np.array([80.])
+        tb3 = np.array([295.])
+        tb4 = np.array([282.])
+        refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
+        self.assertAlmostEqual(refl.data[0], 0.452497961, 6)
+
+        tb3x = refl37.emissive_part_3x()
+        self.assertAlmostEqual(tb3x, 270.077268, 6)
+
+        sunz = np.array([50.])
+        tb3 = np.array([300.])
+        tb4 = np.array([285.])
+        refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
+        self.assertAlmostEqual(refl.data[0], 0.1189217, 6)
+
+        tb3x = refl37.emissive_part_3x()
+        self.assertAlmostEqual(tb3x, 282.455426, 6)
 
     def tearDown(self):
         """Clean up"""

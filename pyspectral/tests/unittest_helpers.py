@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 Martin Raspaud
+# Copyright (c) 2017 Adam.Dybbroe
 
 # Author(s):
 
-#   Martin Raspaud <martin.raspaud@smhi.se>
+#   Adam.Dybbroe <a000680@c20671.ad.smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,17 +20,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Test the documentation."""
+"""Helper functions for unit testing
+"""
 
-import doctest
+import numpy as np
 
-def test():
-    """Test"""
-    #result = doctest.testfile("../doc/usage.rst")
-    #assert result[0] == 0
-    #result = doctest.testfile("../doc/seviri_example.rst")
-    #assert result[0] == 0
-    pass
 
-if __name__ == '__main__':
-    test()
+def assertNumpyArraysEqual(self, other):
+    if self.shape != other.shape:
+        raise AssertionError("Shapes don't match")
+    if not np.allclose(self, other):
+        raise AssertionError("Elements don't match!")

@@ -1,30 +1,44 @@
 language: python
-python:
-  - "2.7"
-# command to install dependencies, e.g. 
-install: 
-  - pip install -r requirements.txt
-  - pip install .
-  - pip install coveralls
-addons:
-  apt_packages:
-    - libhdf5-serial-dev
-# command to run tests, e.g. python setup.py test
-#script:  python setup.py test
+env:
+  global:
+  # Set defaults to avoid repeating in most cases
+  - PYTHON_VERSION=$TRAVIS_PYTHON_VERSION
+  - NUMPY_VERSION=stable
+  - MAIN_CMD='python setup.py'
+  - CONDA_DEPENDENCIES='scipy coveralls coverage h5py mock requests six appdirs python-geotiepoints dask docutils pyyaml xlrd'
+  - PIP_DEPENDENCIES=''
+  - SETUP_XVFB=False
+  - EVENT_TYPE='push pull_request cron'
+  - SETUP_CMD='test'
+  - CONDA_CHANNELS='conda-forge'
+  - CONDA_CHANNEL_PRIORITY='True'
+matrix:
+  include:
+    - env: PYTHON_VERSION=2.7
+      os: linux
+    - env: PYTHON_VERSION=2.7
+      os: osx
+      language: generic
+    - env: PYTHON_VERSION=3.6
+      os: linux
+    - env: PYTHON_VERSION=3.6
+      os: osx
+      language: generic
+install:
+    - git clone --depth 1 git://github.com/astropy/ci-helpers.git
+    - source ci-helpers/travis/setup_conda.sh
 script: coverage run --source=pyspectral setup.py test
-virtualenv:
-  system_site_packages: true
-before_install:
-  - sudo apt-get install -qq python-numpy python-scipy
-after_success: coveralls
+after_success:
+- if [[ $PYTHON_VERSION == 3.6 ]]; then coveralls; fi
 deploy:
-  provider: pypi
-  user: adybbroe
-  password:
-    secure: A/DAh5K6A1UzARPWsiNL+qiyLfHd1dS2fhmZlE0SNcS0zN1CalyY2s7znVKTE15fSF0oV/jah/jy1PQIMBFFbAhpc6nmnDx3DxJ3d9RWxGE2hLWKn9tYUHQ07k7oiRFrwQe2bEJlaLBQfBOZ/DIe4Umc3osC65UINX03oOHsPFI=
-  on:
-    tags: true
-    repo: pytroll/pyspectral
-    condition: $TRAVIS_PYTHON_VERSION = "2.7"
+  - provider: pypi
+    user: adybbroe
+    password:
+      secure: SY0qo7sZXDjDx0DHvuXrHvL9VTAulgU/T33d6UWXf469jT9DOexuZ2VYLgJbYQen5FSe5JmQE0ZMdId1cb8IPP/77qCgQK6f0lRDa43fSYXhcD+fHzlQskievJrwamkRYx6WBrJbwGAKBNinUgNSaTdbh9XUugziGFiOHUfVppM=
+    distributions: sdist bdist_wheel
+    skip_existing: true
+    on:
+      tags: true
+      repo: pytroll/pyspectral
 notifications:
-  slack: pytroll:96mNSYSI1dBjGyzVXkBT6qFt
+  slack: pytroll:LR63XVq1cT8kVc3fnXKIZmYr

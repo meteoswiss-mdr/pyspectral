@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2015, 2016 Adam.Dybbroe
+# Copyright (c) 2014-2018 Pytroll
 
 # Author(s):
 
@@ -23,24 +23,82 @@
 
 """Utility functions"""
 
-import numpy as np
 import os
-from pyspectral import get_config
-from os.path import expanduser
+import logging
+import tempfile
+import numpy as np
+from pyspectral.config import get_config
 
-BANDNAMES = {'VIS006': 'VIS0.6',
-             'VIS008': 'VIS0.8',
-             'IR_016': 'NIR1.6',
-             'IR_039': 'IR3.9',
-             'WV_062': 'IR6.2',
-             'WV_073': 'IR7.3',
-             'IR_087': 'IR8.7',
-             'IR_097': 'IR9.7',
-             'IR_108': 'IR10.8',
-             'IR_120': 'IR12.0',
-             'IR_134': 'IR13.4',
-             'HRV': 'HRV'
-             }
+LOG = logging.getLogger(__name__)
+
+WAVE_LENGTH = 'wavelength'
+WAVE_NUMBER = 'wavenumber'
+
+BANDNAMES = {}
+BANDNAMES['generic'] = {'VIS006': 'VIS0.6',
+                        'VIS008': 'VIS0.8',
+                        'IR_016': 'NIR1.6',
+                        'IR_039': 'IR3.9',
+                        'WV_062': 'IR6.2',
+                        'WV_073': 'IR7.3',
+                        'IR_087': 'IR8.7',
+                        'IR_097': 'IR9.7',
+                        'IR_108': 'IR10.8',
+                        'IR_120': 'IR12.0',
+                        'IR_134': 'IR13.4',
+                        'HRV': 'HRV',
+                        'I01': 'I1',
+                        'I02': 'I2',
+                        'I03': 'I3',
+                        'I04': 'I4',
+                        'I05': 'I5',
+                        'M01': 'M1',
+                        'M02': 'M2',
+                        'M03': 'M3',
+                        'M04': 'M4',
+                        'M05': 'M5',
+                        'M06': 'M6',
+                        'M07': 'M7',
+                        'M08': 'M8',
+                        'M09': 'M9',
+                        'C01': 'ch1',
+                        'C02': 'ch2',
+                        'C03': 'ch3',
+                        'C04': 'ch4',
+                        'C05': 'ch5',
+                        'C06': 'ch6',
+                        'C07': 'ch7',
+                        'C08': 'ch8',
+                        'C09': 'ch9',
+                        'C10': 'ch10',
+                        'C11': 'ch11',
+                        'C12': 'ch12',
+                        'C13': 'ch13',
+                        'C14': 'ch14',
+                        'C15': 'ch15',
+                        'C16': 'ch16',
+                        }
+
+BANDNAMES['avhrr-3'] = {'3b': 'ch3b',
+                        '3a': 'ch3a'}
+
+BANDNAMES['ahi'] = {'B01': 'ch1',
+                    'B02': 'ch2',
+                    'B03': 'ch3',
+                    'B04': 'ch4',
+                    'B05': 'ch5',
+                    'B06': 'ch6',
+                    'B07': 'ch7',
+                    'B08': 'ch8',
+                    'B09': 'ch9',
+                    'B10': 'ch10',
+                    'B11': 'ch11',
+                    'B12': 'ch12',
+                    'B13': 'ch13',
+                    'B14': 'ch14',
+                    'B15': 'ch15',
+                    'B16': 'ch16'
+                    }
 
 INSTRUMENTS = {'NOAA-19': 'avhrr/3',
                'NOAA-18': 'avhrr/3',
@@ -58,53 +116,103 @@ INSTRUMENTS = {'NOAA-19': 'avhrr/3',
                'TIROS-N': 'avhrr/1',
                'Metop-A': 'avhrr/3',
                'Metop-B': 'avhrr/3',
-               'Metop-C': 'avhrr/3'
+               'Metop-C': 'avhrr/3',
+               'Suomi-NPP': 'viirs',
+               'NOAA-20': 'viirs',
+               'FY-3D': 'mersi-2',
+               'Feng-Yun 3D': 'mersi-2'
                }
 
+HTTP_PYSPECTRAL_RSR = "https://zenodo.org/record/1491277/files/pyspectral_rsr_data.tgz"
+RSR_DATA_VERSION_FILENAME = "PYSPECTRAL_RSR_VERSION"
+RSR_DATA_VERSION = "v1.0.3"
 
-HTTP_PYSPECTRAL_RSR = "https://dl.dropboxusercontent.com/u/37482654/pyspectral_rsr_data.tgz"
-HTTP_RAYLEIGH_ONLY_LUTS = "https://dl.dropboxusercontent.com/u/37482654/rayleigh_only/rayleigh_luts_rayleigh_only.tgz"
-HTTP_RURAL_AEROSOL_LUTS = "https://dl.dropboxusercontent.com/u/37482654/rural_aerosol/rayleigh_luts_rural_aerosol.tgz"
+ATM_CORRECTION_LUT_VERSION = {}
+ATM_CORRECTION_LUT_VERSION['antarctic_aerosol'] = {'version': 'v1.0.1',
+                                                   'filename': 'PYSPECTRAL_ATM_CORR_LUT_AA'}
+ATM_CORRECTION_LUT_VERSION['continental_average_aerosol'] = {'version': 'v1.0.1',
+                                                             'filename': 'PYSPECTRAL_ATM_CORR_LUT_CAA'}
+ATM_CORRECTION_LUT_VERSION['continental_clean_aerosol'] = {'version': 'v1.0.1',
+                                                           'filename': 'PYSPECTRAL_ATM_CORR_LUT_CCA'}
+ATM_CORRECTION_LUT_VERSION['continental_polluted_aerosol'] = {'version': 'v1.0.1',
+                                                              'filename': 'PYSPECTRAL_ATM_CORR_LUT_CPA'}
+ATM_CORRECTION_LUT_VERSION['desert_aerosol'] = {'version': 'v1.0.1',
+                                                           'filename': 'PYSPECTRAL_ATM_CORR_LUT_DA'}
+ATM_CORRECTION_LUT_VERSION['marine_clean_aerosol'] = {'version': 'v1.0.1',
+                                                      'filename': 'PYSPECTRAL_ATM_CORR_LUT_MCA'}
+ATM_CORRECTION_LUT_VERSION['marine_polluted_aerosol'] = {'version': 'v1.0.1',
+                                                         'filename': 'PYSPECTRAL_ATM_CORR_LUT_MPA'}
+ATM_CORRECTION_LUT_VERSION['marine_tropical_aerosol'] = {'version': 'v1.0.1',
+                                                         'filename': 'PYSPECTRAL_ATM_CORR_LUT_MTA'}
+ATM_CORRECTION_LUT_VERSION['rural_aerosol'] = {'version': 'v1.0.1',
+                                               'filename': 'PYSPECTRAL_ATM_CORR_LUT_RA'}
+ATM_CORRECTION_LUT_VERSION['urban_aerosol'] = {'version': 'v1.0.1',
+                                               'filename': 'PYSPECTRAL_ATM_CORR_LUT_UA'}
+ATM_CORRECTION_LUT_VERSION['rayleigh_only'] = {'version': 'v1.0.1',
+                                               'filename': 'PYSPECTRAL_ATM_CORR_LUT_RO'}
 
 
-OPTIONS = {}
+AEROSOL_TYPES = ['antarctic_aerosol', 'continental_average_aerosol',
+                 'continental_clean_aerosol', 'continental_polluted_aerosol',
+                 'desert_aerosol', 'marine_clean_aerosol',
+                 'marine_polluted_aerosol', 'marine_tropical_aerosol',
+                 'rayleigh_only', 'rural_aerosol', 'urban_aerosol']
+
+ATMOSPHERES = {'subarctic summer': 4, 'subarctic winter': 5,
+               'midlatitude summer': 6, 'midlatitude winter': 7,
+               'tropical': 8, 'us-standard': 9}
+
+
+HTTPS_RAYLEIGH_LUTS = {}
+URL_PREFIX = "https://zenodo.org/record/1288441/files/pyspectral_atm_correction_luts"
+for atype in AEROSOL_TYPES:
+    name = {'rayleigh_only': 'no_aerosol'}.get(atype, atype)
+    url = "{prefix}_{name}.tgz".format(prefix=URL_PREFIX, name=name)
+    HTTPS_RAYLEIGH_LUTS[atype] = url
+
+
 CONF = get_config()
-for option, value in CONF.items('general', raw=True):
-    OPTIONS[option] = value
+LOCAL_RSR_DIR = CONF.get('rsr_dir')
+LOCAL_RAYLEIGH_DIR = CONF.get('rayleigh_dir')
 
-LOCAL_RSR_DIR = expanduser(OPTIONS['rsr_dir'])
 try:
     os.makedirs(LOCAL_RSR_DIR)
 except OSError:
     if not os.path.isdir(LOCAL_RSR_DIR):
         raise
 
-LOCAL_RAYLEIGH_DIR = expanduser(OPTIONS['rayleigh_dir'])
-
-HTTPS = [HTTP_RAYLEIGH_ONLY_LUTS, HTTP_RURAL_AEROSOL_LUTS]
-RAYLEIGH_SUB_NAMES = ['rayleigh_only', 'rural_aerosol']
 RAYLEIGH_LUT_DIRS = {}
-for http_addr, sub_dir_name in zip(HTTPS, RAYLEIGH_SUB_NAMES):
+for sub_dir_name in HTTPS_RAYLEIGH_LUTS:
     dirname = os.path.join(LOCAL_RAYLEIGH_DIR, sub_dir_name)
-    try:
-        os.makedirs(dirname)
-    except OSError:
-        if not os.path.isdir(dirname):
-            raise
-
     RAYLEIGH_LUT_DIRS[sub_dir_name] = dirname
+
+TB2RAD_DIR = CONF.get('tb2rad_dir', tempfile.gettempdir())
 
 
 def convert2wavenumber(rsr):
-    """Take rsr data set with all channels and detectors for an instrument
+    """
+    Take rsr data set with all channels and detectors for an instrument
     each with a set of wavelengths and normalised responses and
     convert to wavenumbers and responses
+
+    :rsr: Relative Spectral Response function (all bands)
+    Returns:
+      :retv: Relative Spectral Responses in wave number space
+      :info: Dictionary with scale (to go convert to SI units) and unit
+
     """
+
     retv = {}
     for chname in rsr.keys():  # Go through bands/channels
         retv[chname] = {}
         for det in rsr[chname].keys():  # Go through detectors
             retv[chname][det] = {}
+            if 'wavenumber' in rsr[chname][det].keys():
+                # Make a copy. Data are already in wave number space
+                retv[chname][det] = rsr[chname][det].copy()
+                LOG.debug("RSR data already in wavenumber space. No conversion needed.")
+                continue
+
             for sat in rsr[chname][det].keys():
                 if sat == "wavelength":
                     # micro meters to cm
@@ -123,7 +231,6 @@ def convert2wavenumber(rsr):
 
     unit = 'cm-1'
     si_scale = 100.0
-
     return retv, {'unit': unit, 'si_scale': si_scale}
 
 
@@ -149,6 +256,32 @@ def get_central_wave(wav, resp, weight=1.0):
     return np.trapz(resp * wav * weight, wav) / np.trapz(resp * weight, wav)
 
 
+def get_bandname_from_wavelength(sensor, wavelength, rsr, epsilon=0.1, multiple_bands=False):
+    """Get the bandname from h5 rsr provided the approximate wavelength."""
+    # channel_list = [channel for channel in rsr.rsr if abs(
+    # rsr.rsr[channel]['det-1']['central_wavelength'] - wavelength) < epsilon]
+
+    chdist_min = 2.0
+    chfound = []
+    for channel in rsr:
+        chdist = abs(
+            rsr[channel]['det-1']['central_wavelength'] - wavelength)
+        if chdist < chdist_min and chdist < epsilon:
+            chfound.append(BANDNAMES.get(sensor, BANDNAMES['generic']).get(channel, channel))
+
+    if len(chfound) == 1:
+        return chfound[0]
+    elif len(chfound) > 1:
+        bstrlist = ['band={}'.format(b) for b in chfound]
+        if not multiple_bands:
+            raise AttributeError("More than one band found with that wavelength! {}".format(str(bstrlist)))
+        else:
+            LOG.debug("More than one band found with requested wavelength: %s", str(bstrlist))
+        return chfound
+    else:
+        return None
+
+
 def sort_data(x_vals, y_vals):
     """Sort the data so that x is monotonically increasing and contains
     no duplicates.
@@ -171,20 +304,19 @@ def sort_data(x_vals, y_vals):
 
 
 def convert2hdf5(ClassIn, platform_name, bandnames, scale=1e-06):
-    """Retrieve original RSR data and convert to internal hdf5 format.  
+    """Retrieve original RSR data and convert to internal hdf5 format.
 
     *scale* is the number which has to be multiplied to the wavelength data in
     order to get it in the SI unit meter
 
     """
     import h5py
-    import os.path
 
     instr = ClassIn(bandnames[0], platform_name)
     instr_name = instr.instrument.replace('/', '')
     filename = os.path.join(instr.output_dir,
-                            "rsr_%s_%s.h5" % (instr_name,
-                                              platform_name))
+                            "rsr_{0}_{1}.h5".format(instr_name,
+                                                    platform_name))
 
     with h5py.File(filename, "w") as h5f:
         h5f.attrs['description'] = ('Relative Spectral Responses for ' +
@@ -193,62 +325,22 @@ def convert2hdf5(ClassIn, platform_name, bandnames, scale=1e-06):
         h5f.attrs['band_names'] = bandnames
 
         for chname in bandnames:
-            aatsr = ClassIn(chname, platform_name)
+            sensor = ClassIn(chname, platform_name)
             grp = h5f.create_group(chname)
-            wvl = aatsr.rsr['wavelength'][~np.isnan(aatsr.rsr['wavelength'])]
-            rsp = aatsr.rsr['response'][~np.isnan(aatsr.rsr['wavelength'])]
+            wvl = sensor.rsr['wavelength'][~np.isnan(sensor.rsr['wavelength'])]
+            rsp = sensor.rsr['response'][~np.isnan(sensor.rsr['wavelength'])]
             grp.attrs['central_wavelength'] = get_central_wave(wvl, rsp)
-            arr = aatsr.rsr['wavelength']
+            arr = sensor.rsr['wavelength']
             dset = grp.create_dataset('wavelength', arr.shape, dtype='f')
             dset.attrs['unit'] = 'm'
             dset.attrs['scale'] = scale
             dset[...] = arr
-            arr = aatsr.rsr['response']
+            arr = sensor.rsr['response']
             dset = grp.create_dataset('response', arr.shape, dtype='f')
             dset[...] = arr
 
 
-def get_rayleigh_reflectance(parms, sunz, satz):
-    """Get the Rayleigh reflectance applying the polynomial fit parameters
-
-    P(x,y) = c_{00} + c_{10}x + ...+ c_{n0}x^n +
-             c_{01}y + ...+ c_{0n}y^n +
-             c_{11}xy + c_{12}xy^2 + ... +
-             c_{1(n-1)}xy^{n-1}+ ... + c_{(n-1)1}x^{n-1}y
-
-    x = relative azimuth difference angle
-    y = secant of the satellite zenith angle
-    """
-
-    sec = 1. / np.cos(np.deg2rad(satz))
-    sunsec = 1. / np.cos(np.deg2rad(sunz))
-
-    res = (parms[0] +
-           parms[1] * sunsec +
-           parms[2] * sunsec ** 2 +
-           parms[3] * sunsec ** 3 +
-           parms[4] * sunsec ** 4 +
-           parms[5] * sunsec ** 5 +
-           parms[6] * sec +
-           parms[7] * sec ** 2 +
-           parms[8] * sec ** 3 +
-           parms[9] * sec ** 4 +
-           parms[10] * sec ** 5 +
-           parms[11] * sunsec * sec +
-           parms[12] * sunsec * sec ** 2 +
-           parms[13] * sunsec * sec ** 3 +
-           parms[14] * sunsec * sec ** 4 +
-           parms[15] * sunsec ** 2 * sec +
-           parms[16] * sunsec ** 2 * sec ** 2 +
-           parms[17] * sunsec ** 2 * sec ** 3 +
-           parms[18] * sunsec ** 3 * sec +
-           parms[19] * sunsec ** 3 * sec ** 2 +
-           parms[20] * sunsec ** 4 * sec)
-
-    return res
-
-
-def download_rsr():
+def download_rsr(**kwargs):
     """Download the pre-compiled hdf5 formatet relative spectral response functions
     from the internet
 
@@ -257,37 +349,151 @@ def download_rsr():
     #
     import tarfile
     import requests
-    from tqdm import tqdm
+    TQDM_LOADED = True
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        TQDM_LOADED = False
+
+    dest_dir = kwargs.get('dest_dir', LOCAL_RSR_DIR)
+    dry_run = kwargs.get('dry_run', False)
+
+    LOG.info("Download RSR files and store in directory %s", dest_dir)
+
+    filename = os.path.join(dest_dir, "pyspectral_rsr_data.tgz")
+    LOG.debug("Get data. URL: %s", HTTP_PYSPECTRAL_RSR)
+    LOG.debug("Destination = %s", dest_dir)
+    if dry_run:
+        return
 
     response = requests.get(HTTP_PYSPECTRAL_RSR)
-    filename = os.path.join(LOCAL_RSR_DIR, "pyspectral_rsr_data.tgz")
-    with open(filename, "wb") as handle:
-        for data in tqdm(response.iter_content()):
-            handle.write(data)
+    if TQDM_LOADED:
+        with open(filename, "wb") as handle:
+            for data in tqdm(response.iter_content()):
+                handle.write(data)
+    else:
+        with open(filename, "wb") as handle:
+            for data in response.iter_content():
+                handle.write(data)
 
     tar = tarfile.open(filename)
-    tar.extractall(LOCAL_RSR_DIR)
+    tar.extractall(dest_dir)
     tar.close()
     os.remove(filename)
 
 
-def download_luts():
+def download_luts(**kwargs):
     """Download the luts from internet."""
     #
     import tarfile
     import requests
-    from tqdm import tqdm
+    TQDM_LOADED = True
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        TQDM_LOADED = False
 
-    for http, subname in zip(HTTPS, RAYLEIGH_SUB_NAMES):
+    dry_run = kwargs.get('dry_run', False)
+
+    if 'aerosol_type' in kwargs:
+        if isinstance(kwargs['aerosol_type'], (list, tuple, set)):
+            aerosol_types = kwargs['aerosol_type']
+        else:
+            aerosol_types = [kwargs['aerosol_type'], ]
+    else:
+        aerosol_types = HTTPS_RAYLEIGH_LUTS.keys()
+
+    chunk_size = 10124
+
+    for subname in aerosol_types:
+
+        LOG.debug('Aerosol type: %s', subname)
+        http = HTTPS_RAYLEIGH_LUTS[subname]
+        LOG.debug('URL = %s', http)
+
+        subdir_path = RAYLEIGH_LUT_DIRS[subname]
+        try:
+            LOG.debug('Create directory: %s', subdir_path)
+            if not dry_run:
+                os.makedirs(subdir_path)
+        except OSError:
+            if not os.path.isdir(subdir_path):
+                raise
+
+        if dry_run:
+            continue
+
         response = requests.get(http)
+        total_size = int(response.headers['content-length'])
 
-        subdirname = RAYLEIGH_LUT_DIRS[subname]
-        filename = os.path.join(subdirname, "rayleigh_luts_%s.tgz" % subname)
-        with open(filename, "wb") as handle:
-            for data in tqdm(response.iter_content()):
-                handle.write(data)
+        filename = os.path.join(
+            subdir_path, "pyspectral_rayleigh_correction_luts.tgz")
+        if TQDM_LOADED:
+            with open(filename, "wb") as handle:
+                for data in tqdm(iterable=response.iter_content(chunk_size=chunk_size),
+                                 total=(total_size / chunk_size), unit='kB'):
+                    handle.write(data)
+        else:
+            with open(filename, "wb") as handle:
+                for data in response.iter_content():
+                    handle.write(data)
 
         tar = tarfile.open(filename)
-        tar.extractall(subdirname)
+        tar.extractall(subdir_path)
         tar.close()
         os.remove(filename)
+
+
+def debug_on():
+    """Turn debugging logging on.
+    """
+    logging_on(logging.DEBUG)
+
+
+_is_logging_on = False
+
+
+def logging_on(level=logging.WARNING):
+    """Turn logging on.
+    """
+    global _is_logging_on
+
+    if not _is_logging_on:
+        console = logging.StreamHandler()
+        console.setFormatter(logging.Formatter("[%(levelname)s: %(asctime)s :"
+                                               " %(name)s] %(message)s",
+                                               '%Y-%m-%d %H:%M:%S'))
+        console.setLevel(level)
+        logging.getLogger('').addHandler(console)
+        _is_logging_on = True
+
+    log = logging.getLogger('')
+    log.setLevel(level)
+    for h in log.handlers:
+        h.setLevel(level)
+
+
+class NullHandler(logging.Handler):
+
+    """Empty handler"""
+
+    def emit(self, record):
+        """Record a message.
+        """
+        pass
+
+
+def logging_off():
+    """Turn logging off.
+    """
+    logging.getLogger('').handlers = [NullHandler()]
+
+
+def get_logger(name):
+    """Return logger with null handle
+    """
+
+    log = logging.getLogger(name)
+    if not log.handlers:
+        log.addHandler(NullHandler())
+    return log

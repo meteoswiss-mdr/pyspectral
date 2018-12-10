@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016 Adam.Dybbroe
+# Copyright (c) 2016 - 2018 PyTroll community
 
 # Author(s):
 
@@ -20,41 +20,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Sentinel-3 SLSTR spectral response function interface
+"""Reading the original raw GOES-R ABI spectral responses and generating the
+internal pyspectral formatet hdf5.
 
-https://sentinel.esa.int/documents/247904/322305/SLSTR_FM02_Spectral_Responses_Necdf_zip/3a4482b8-6e44-47f3-a8f2-79c000663976
+https://ncc.nesdis.noaa.gov/GOESR/ABI.php
 
 """
 
 import os
-from netCDF4 import Dataset
-
+import numpy as np
 from pyspectral.utils import convert2hdf5 as tohdf5
-
+from pyspectral.raw_reader import InstrumentRSR
 import logging
+
 LOG = logging.getLogger(__name__)
 
+ABI_BAND_NAMES = ['ch1', 'ch2', 'ch3', 'ch4',
+                  'ch5', 'ch6', 'ch7', 'ch8',
+                  'ch9', 'ch10', 'ch11', 'ch12',
+                  'ch13', 'ch14', 'ch15', 'ch16']
 
-SLSTR_BAND_NAMES = ['ch1', 'ch2', 'ch3', 'ch4',
-                    'ch5', 'ch6', 'ch7', 'ch8', 'ch9']
 
-from pyspectral.raw_reader import InstrumentRSR
+class AbiRSR(InstrumentRSR):
 
-
-class SlstrRSR(InstrumentRSR):
-
-    """Class for Sentinel-3 SLSTR RSR"""
+    """Class for GOES-R ABI RSR"""
 
     def __init__(self, bandname, platform_name):
         """
-        Read the SLSTR relative spectral responses for all channels.
+        Read the GOES-R ABI relative spectral responses for all channels.
 
         """
-        super(SlstrRSR, self).__init__(bandname, platform_name,
-                                       SLSTR_BAND_NAMES)
+        super(AbiRSR, self).__init__(bandname, platform_name,
+                                     ABI_BAND_NAMES)
 
-        self.instrument = 'slstr'
+        self.instrument = 'abi'
 
         self._get_options_from_config()
         self._get_bandfilenames()
@@ -70,22 +69,28 @@ class SlstrRSR(InstrumentRSR):
         self.filename = self.requested_band_filename
 
     def _load(self, scale=1.0):
-        """Load the SLSTR relative spectral responses
+        """Load the ABI relative spectral responses
         """
 
         LOG.debug("File: %s", str(self.requested_band_filename))
-        ncf = Dataset(self.requested_band_filename, 'r')
 
-        wvl = ncf.variables['wavelength'][:] * scale
-        resp = ncf.variables['response'][:]
+        data = np.genfromtxt(self.requested_band_filename,
+                             unpack=True,
+                             names=['wavelength',
+                                    'wavenumber',
+                                    'response'],
+                             skip_header=2)
+
+        wvl = data['wavelength'] * scale
+        resp = data['response']
 
         self.rsr = {'wavelength': wvl, 'response': resp}
 
 
 def main():
     """Main"""
-    for platform_name in ['Sentinel-3A', ]:
-        tohdf5(SlstrRSR, platform_name, SLSTR_BAND_NAMES)
+    for platform_name in ['GOES-16', 'GOES-17', ]:
+        tohdf5(AbiRSR, platform_name, ABI_BAND_NAMES)
 
 
 if __name__ == "__main__":

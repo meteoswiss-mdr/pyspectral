@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2015, 2016 Adam.Dybbroe
+# Copyright (c) 2014, 2015, 2016, 2017, 2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -23,23 +23,21 @@
 
 """Read the NOAA/Metop AVHRR relative spectral response functions.
 Data from NOAA STAR.
+https://www.star.nesdis.noaa.gov/smcd/spb/fwu/homepage/AVHRR/spec_resp_func/index.html
 """
 
 import os
 import numpy as np
 from pyspectral.utils import INSTRUMENTS
 from pyspectral.utils import convert2hdf5 as tohdf5
-
+from pyspectral.raw_reader import InstrumentRSR
 import logging
+
 LOG = logging.getLogger(__name__)
-from pyspectral import get_config
 
 AVHRR_BAND_NAMES = {'avhrr/3': ['ch1', 'ch2', 'ch3a', 'ch3b', 'ch4', 'ch5'],
                     'avhrr/2': ['ch1', 'ch2', 'ch3', 'ch4', 'ch5'],
                     'avhrr/1': ['ch1', 'ch2', 'ch3', 'ch4']}
-
-
-from pyspectral.raw_reader import InstrumentRSR
 
 
 class AvhrrRSR(InstrumentRSR):
@@ -88,12 +86,14 @@ class AvhrrRSR(InstrumentRSR):
 
 def main():
     """Main"""
-    for platform_name in ["NOAA-17", "NOAA-16", "NOAA-14", "NOAA-12",
-                          "NOAA-11", "NOAA-9", "NOAA-7",
-                          "NOAA-10", "NOAA-8", "NOAA-6", "TIROS-N",
-                          "NOAA-15"]:
+    # for platform_name in ["NOAA-17", "NOAA-16", "NOAA-14", "NOAA-12",
+    #                       "NOAA-11", "NOAA-9", "NOAA-7",
+    #                       "NOAA-10", "NOAA-8", "NOAA-6", "TIROS-N",
+    #                       "NOAA-15"]:
+    for platform_name in ["Metop-C", ]:
         tohdf5(AvhrrRSR, platform_name, AVHRR_BAND_NAMES[
                INSTRUMENTS[platform_name]])
+
 
 if __name__ == "__main__":
     main()

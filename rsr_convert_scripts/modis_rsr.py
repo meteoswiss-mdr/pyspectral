@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2015, 2016 Adam.Dybbroe
+# Copyright (c) 2014-2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -25,14 +25,12 @@
 
 import os
 import numpy as np
-
+import logging
 from pyspectral.utils import sort_data
 from pyspectral.utils import get_central_wave
+from pyspectral.config import get_config
 
-import logging
 LOG = logging.getLogger(__name__)
-
-from pyspectral import get_config
 
 MODIS_BAND_NAMES = [str(i) for i in range(1, 37)]
 SHORTWAVE_BANDS = [str(i) for i in range(1, 20) + [26]]
@@ -59,18 +57,11 @@ class ModisRSR(object):
         self.rsr = None
         self._sort = sort
 
-        conf = get_config()
-        options = {}
-        for option, value in conf.items(self.platform_name + '-modis',
-                                        raw=True):
-            options[option] = value
-
-        for option, value in conf.items('general', raw=True):
-            options[option] = value
-
+        options = get_config()
+        self.path = options[platform_name + '-modis'].get('path')
         self.output_dir = options.get('rsr_dir', './')
 
-        self._get_bandfilenames(**options)
+        self._get_bandfilenames()
         LOG.debug("Filenames: %s", str(self.filenames))
         if os.path.exists(self.filenames[bandname]):
             self.requested_band_filename = self.filenames[bandname]
@@ -79,21 +70,23 @@ class ModisRSR(object):
             raise IOError("Couldn't find an existing file for this band: " +
                           str(self.bandname))
 
-    def _get_bandfilenames(self, **options):
+    def _get_bandfilenames(self):
         """Get the MODIS rsr filenames"""
-        path = options["path"]
+        path = self.path
 
         for band in MODIS_BAND_NAMES:
             bnum = int(band)
             LOG.debug("Band = %s", str(band))
             if self.platform_name == 'EOS-Terra':
                 filename = os.path.join(path,
-                                        "rsr.%d.inb.final" % (bnum))
+                                        "rsr.{0:d}.inb.final".format(bnum))
             else:
                 if bnum in [5, 6, 7] + range(20, 37):
-                    filename = os.path.join(path, "%.2d.tv.1pct.det" % (bnum))
+                    filename = os.path.join(
+                        path, "{0:>02d}.tv.1pct.det".format(bnum))
                 else:
-                    filename = os.path.join(path, "%.2d.amb.1pct.det" % (bnum))
+                    filename = os.path.join(
+                        path, "{0:>02d}.amb.1pct.det".format(bnum))
 
             self.filenames[band] = filename
 
@@ -132,14 +125,15 @@ def read_modis_response(filename, scale=1.0):
     with open(filename, "r") as fid:
         lines = fid.readlines()
 
+    nodata = -99.0
     # The IR channels seem to be in microns, whereas the short wave channels are
     # in nanometers! For VIS/NIR scale should be 0.001
     detectors = {}
     for line in lines:
         if line.find("#") == 0:
             continue
-        _, det_num, s_1, s_2 = line.split()
-        detector_name = 'det-%d' % int(det_num)
+        dummy, det_num, s_1, s_2 = line.split()
+        detector_name = 'det-{0:d}'.format(int(det_num))
         if detector_name not in detectors:
             detectors[detector_name] = {'wavelength': [], 'response': []}
 
@@ -147,8 +141,11 @@ def read_modis_response(filename, scale=1.0):
         detectors[detector_name]['response'].append(float(s_2))
 
     for key in detectors:
-        detectors[key]['wavelength'] = np.array(detectors[key]['wavelength'])
-        detectors[key]['response'] = np.array(detectors[key]['response'])
+        mask = np.array(detectors[key]['response']) == nodata
+        detectors[key]['response'] = np.ma.masked_array(
+            detectors[key]['response'], mask=mask).compressed()
+        detectors[key]['wavelength'] = np.ma.masked_array(
+            detectors[key]['wavelength'], mask=mask).compressed()
 
     return detectors
 
@@ -159,7 +156,7 @@ def convert2hdf5(platform_name):
 
     modis = ModisRSR('20', platform_name)
     mfile = os.path.join(modis.output_dir,
-                         "rsr_modis_%s.h5" % platform_name)
+                         "rsr_modis_{platform}.h5".format(platform=platform_name))
 
     with h5py.File(mfile, "w") as h5f:
         h5f.attrs['description'] = 'Relative Spectral Responses for MODIS'
@@ -213,6 +210,7 @@ def main():
     """Main"""
     for sat in ['EOS-Terra', 'EOS-Aqua']:
         convert2hdf5(sat)
+
 
 if __name__ == "__main__":
     main()

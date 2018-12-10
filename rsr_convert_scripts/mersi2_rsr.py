@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016 Adam.Dybbroe
+# Copyright (c) 2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,79 +20,69 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Reading the original raw GOES-R ABI spectral responses and generating the
-internal pyspectral formatet hdf5.
-
-http://ncc.nesdis.noaa.gov/GOESR/docs/GOES-R_ABI_PFM_SRF_CWG_v3.zip
-
+"""Read the MERSI-II relative spectral responses. Data from xuna@cma.gov.cn
+(Personal contact with Sara Hörnquist, SMHI).
 """
-
 import os
 import numpy as np
+from pyspectral.utils import INSTRUMENTS
 from pyspectral.utils import convert2hdf5 as tohdf5
+from pyspectral.raw_reader import InstrumentRSR
 
 import logging
 LOG = logging.getLogger(__name__)
 
-
-ABI_BAND_NAMES = ['ch1', 'ch2', 'ch3', 'ch4',
-                  'ch5', 'ch6', 'ch7', 'ch8',
-                  'ch9', 'ch10', 'ch11', 'ch12',
-                  'ch13', 'ch14', 'ch15', 'ch16']
-
-from pyspectral.raw_reader import InstrumentRSR
+MERSI2_BAND_NAMES = ['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8',
+                     'ch9', 'ch10', 'ch11', 'ch12', 'ch13', 'ch14', 'ch15', 'ch16',
+                     'ch17', 'ch18', 'ch19', 'ch20', 'ch21', 'ch22', 'ch23', 'ch24',
+                     'ch25']
 
 
-class AbiRSR(InstrumentRSR):
+class Mersi2RSR(InstrumentRSR):
 
-    """Class for GOES-R ABI RSR"""
+    """Container for the FY3D MERSI-II RSR data"""
 
     def __init__(self, bandname, platform_name):
-        """
-        Read the GOES-R ABI relative spectral responses for all channels.
 
-        """
-        super(AbiRSR, self).__init__(bandname, platform_name,
-                                     ABI_BAND_NAMES)
+        super(Mersi2RSR, self).__init__(bandname, platform_name, MERSI2_BAND_NAMES)
 
-        self.instrument = 'abi'
+        self.instrument = INSTRUMENTS.get(platform_name, 'mersi-2')
 
         self._get_options_from_config()
         self._get_bandfilenames()
 
         LOG.debug("Filenames: %s", str(self.filenames))
-        if os.path.exists(self.filenames[bandname]):
+        if self.filenames[bandname] and os.path.exists(self.filenames[bandname]):
             self.requested_band_filename = self.filenames[bandname]
             self._load()
-        else:
-            raise IOError("Couldn't find an existing file for this band: " +
-                          str(self.bandname))
 
+        else:
+            LOG.warning("Couldn't find an existing file for this band: %s",
+                        str(self.bandname))
+
+        # To be compatible with VIIRS....
         self.filename = self.requested_band_filename
 
-    def _load(self, scale=1.0):
-        """Load the ABI relative spectral responses
+    def _load(self, scale=0.001):
+        """Load the MERSI-2 RSR data for the band requested.
+           Wavelength is given in nanometers.
         """
-
-        LOG.debug("File: %s", str(self.requested_band_filename))
-
         data = np.genfromtxt(self.requested_band_filename,
                              unpack=True,
                              names=['wavelength',
-                                    'wavenumber',
                                     'response'],
-                             skip_header=2)
+                             skip_header=0)
 
-        wvl = data['wavelength'] * scale
-        resp = data['response']
+        wavelength = data['wavelength'] * scale
+        response = data['response']
 
-        self.rsr = {'wavelength': wvl, 'response': resp}
+        self.rsr = {'wavelength': wavelength, 'response': response}
 
 
 def main():
     """Main"""
-    for platform_name in ['GOES-16', ]:
-        tohdf5(AbiRSR, platform_name, ABI_BAND_NAMES)
+    for platform_name in ["FY-3D", ]:
+        tohdf5(Mersi2RSR, platform_name, MERSI2_BAND_NAMES)
 
 
 if __name__ == "__main__":

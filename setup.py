@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016, 2017 Adam Dybbroe
+# Copyright (c) 2013-2018 Pytroll
 
 # Author(s):
 
@@ -20,6 +20,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+from setuptools import setup
+import os.path
+import versioneer
+
+description = ('Reading and manipulaing satellite sensor spectral responses and the '
+               'solar spectrum, to perfom various corrections to VIS and NIR band data')
 
 try:
     with open('./README', 'r') as fd:
@@ -27,16 +34,32 @@ try:
 except IOError:
     long_description = ''
 
+requires = ['docutils>=0.3', 'numpy>=1.5.1', 'scipy>=0.14',
+            'python-geotiepoints>=1.1.1',
+            'h5py>=2.5', 'requests', 'six', 'pyyaml',
+            'appdirs']
 
-from setuptools import setup
-import imp
-import os.path
+dask_extra = ['dask[array]']
+test_requires = ['pyyaml', 'dask[array]', 'xlrd']  # , 'matplotlib']
+if sys.version < '3.0':
+    test_requires.append('mock')
+    try:
+        # This is needed in order to let the unittests pass
+        # without complaining at the end on certain systems
+        import multiprocessing
+    except ImportError:
+        pass
 
-version = imp.load_source('pyspectral.version', 'pyspectral/version.py')
+# if sys.version >= '3.6':
+#     # h5pickle 0.3 only supports 3.6+
+#     test_requires.append('h5pickle')
+#     dask_extra.append('h5pickle')
+
 
 setup(name='pyspectral',
-      version=version.__version__,
-      description='Getting satellite sensor rsr functions and the solar spectrum',
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
+      description=description,
       author='Adam Dybbroe',
       author_email='adam.dybbroe@smhi.se',
       classifiers=['Development Status :: 4 - Beta',
@@ -46,8 +69,7 @@ setup(name='pyspectral',
                    'Operating System :: OS Independent',
                    'Programming Language :: Python',
                    'Topic :: Scientific/Engineering'],
-      url='https://github.com/adybbroe/pyspectral',
-      # download_url="https://github.com/adybbroe/py....
+      url='https://github.com/pytroll/pyspectral',
       long_description=long_description,
       license='GPLv3',
 
@@ -57,7 +79,7 @@ setup(name='pyspectral',
       package_data={
           # If any package contains *.txt files, include them:
           '': ['*.txt', '*.det'],
-          'pyspectral': [os.path.join('etc', 'pyspectral.cfg'),
+          'pyspectral': [os.path.join('etc', 'pyspectral.yaml'),
                          os.path.join('data', '*.dat'),
                          os.path.join('data', '*.XLS'),
                          'data/modis/terra/Reference_RSR_Dataset/*.det'],
@@ -66,18 +88,19 @@ setup(name='pyspectral',
 
       # Project should use reStructuredText, so ensure that the docutils get
       # installed or upgraded on the target machine
-      install_requires=['docutils>=0.3',
-                        'numpy>=1.5.1', 'scipy>=0.8.1',
-                        'h5py>=2.5',
-                        'requests', 'tqdm'],
-      #                  'requests>=2.7.0', 'tqdm>=4.8.4'],
-      extras_require={'xlrd': ['xlrd'],
+      install_requires=requires,
+      extras_require={'xlrd': ['xlrd'], 'trollsift': ['trollsift'],
                       'matplotlib': ['matplotlib'],
-                      'pandas': ['pandas']},
-      scripts=['plot_rsr.py'],
+                      'pandas': ['pandas'],
+                      'tqdm': ['tqdm'],
+                      'dask': dask_extra},
+      scripts=['bin/plot_rsr.py', 'bin/composite_rsr_plot.py',
+               'bin/download_atm_correction_luts.py',
+               'bin/download_rsr.py'],
       data_files=[('share', ['pyspectral/data/e490_00a.dat',
                              'pyspectral/data/MSG_SEVIRI_Spectral_Response_Characterisation.XLS'])],
       test_suite='pyspectral.tests.suite',
-      tests_require=['mock', 'xlrd'],
+      tests_require=test_requires,
+      python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
       zip_safe=False
       )

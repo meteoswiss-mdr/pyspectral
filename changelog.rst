@@ -1,6 +1,725 @@
 Changelog
 =========
 
+v0.7.0 (2018-04-17)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.6.5 → 0.7.0. [Adam.Dybbroe]
+
+- Fix so that unitests pass silently and successfully at the end.
+  [Adam.Dybbroe]
+
+  On some Pythn systems we have seen that the unittests complain in the end
+  with a "TypeError: 'NoneType' object is not callable" and an "Exception
+  in thread"
+
+- Merge pull request #33 from pytroll/feature_dask_atm_correction. [Adam
+  Dybbroe]
+
+  Fix Rayleigh corrector to work with dask
+
+- Merge branch 'develop' into feature_dask_atm_correction.
+  [Adam.Dybbroe]
+
+- Bugfix OLCI band names. [Adam.Dybbroe]
+
+- Fix h5pickle on 3.5 environments (not supported) [davidh-ssec]
+
+- Add h5pickle if the python version is compatible. [davidh-ssec]
+
+- Add h5pickle for safer HDF5 handling with dask in rayleigh correction.
+  [davidh-ssec]
+
+- Fix dask array requirement for tests. [davidh-ssec]
+
+- Fix line too long. [davidh-ssec]
+
+- Remove leftover print statements. [davidh-ssec]
+
+- Fix rayleigh correction converting dask array to numpy. [davidh-ssec]
+
+- Fix rayleigh correction to work with dask installed and numpy inputs.
+  [davidh-ssec]
+
+- Fix more style issues. [davidh-ssec]
+
+- More style fixes. [davidh-ssec]
+
+- More style fixes. [davidh-ssec]
+
+- Fix a styling issues. [davidh-ssec]
+
+- Add missing toolz dependency on CI environments. [davidh-ssec]
+
+- Add dask to CI environments. [davidh-ssec]
+
+- Fix rayleigh corrector to work with or without dask. [davidh-ssec]
+
+- Fix flake8 style issues. [davidh-ssec]
+
+- Update rayleigh correction to be better about using dask. [davidh-
+  ssec]
+
+- Daskifying: Keep the h5 lut-file open. [Adam.Dybbroe]
+
+- First steps daskifying... [Adam.Dybbroe]
+
+v0.6.5 (2018-03-31)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.6.4 → 0.6.5. [Adam.Dybbroe]
+
+- Remove private test scripts from git. [Adam.Dybbroe]
+
+v0.6.4 (2018-03-22)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.6.3 → 0.6.4. [Adam.Dybbroe]
+
+- Slightly improved short and long readme descriptions. [Adam.Dybbroe]
+
+- Increase test coverage. [Adam.Dybbroe]
+
+- Mock unittest so it doesn't try downloading the RSR data.
+  [Adam.Dybbroe]
+
+- Get the updated dataset of atm correction LUTs (all in one zenodo
+  dataset) [Adam.Dybbroe]
+
+- Fix unittests. [Adam.Dybbroe]
+
+- Check the version of the local RSR data, and if old download latest.
+  [Adam.Dybbroe]
+
+- Remove RSR data from git-repo. [Adam.Dybbroe]
+
+  RSR data is donwloaded automagically from Zenodo when need by the user
+
+- Make it possible to specify a custom base-path where radiance-tb LUTs
+  are stored. [Adam.Dybbroe]
+
+- Fix bug - straight wavelength bins in solar interpolation method.
+  [Adam.Dybbroe]
+
+- Fix doc tests for python3. [Adam.Dybbroe]
+
+- Merge pull request #31 from michaelaye/fix_mpl_warning. [Adam Dybbroe]
+
+  change pylab calls to OO pyplot calls. Fixes #30
+
+- Remove obsolete add_subplot line. [K.-Michael Aye]
+
+- Change pylab calls to OO pyplot calls. Fixes #30. [K.-Michael Aye]
+
+v0.6.3 (2018-01-22)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.6.2 → 0.6.3. [Adam.Dybbroe]
+
+- Merge pull request #27 from pytroll/feature-atmcorr-without-rsr. [Adam
+  Dybbroe]
+
+  Feature atmcorr without rsr
+
+- Use us-standard atm and marine-clean aerosol distribution as the
+  default. [Adam.Dybbroe]
+
+- Fix atm correction example - update to use red band instead of blue
+  band for reducing correction over strong reflectors. [Adam.Dybbroe]
+
+- Improve documentation on atm correction. [Adam.Dybbroe]
+
+- Vary the unit test cases a bit more - add greater spread in the indata
+  between tests. [Adam.Dybbroe]
+
+- Add unittest to verify that rayleigh correction can be done without
+  RSR data. [Adam.Dybbroe]
+
+- Merge pull request #25 from pytroll/landsat8. [Adam Dybbroe]
+
+  Landsat-8
+
+- Merge branch 'develop' into landsat8. [Adam.Dybbroe]
+
+- Merge pull request #24 from pytroll/bugfix-olci. [Adam Dybbroe]
+
+  Bugfix OLCI S3A. Add channel 21, rename bands and fix doc pages
+
+- Bugfix OLCI S3A. Add channel 21, rename bands and fix doc pages.
+  [Adam.Dybbroe]
+
+- Fix flak8 issues. [Adam.Dybbroe]
+
+- Merge branch 'develop' into landsat8. [Adam.Dybbroe]
+
+- Merge pull request #23 from pytroll/sentinel2. [Adam Dybbroe]
+
+  Sentinel-2
+
+- Update zenodo link to new RSR archive, and update list of supported
+  platforms. [Adam.Dybbroe]
+
+- Fix flake8 complaints. [Adam.Dybbroe]
+
+- Merge branch 'develop' into sentinel2. [Adam.Dybbroe]
+
+- Add support for Sentinel 2 MSI RSR data. Further,
+  get_bandname_from_wavelength now needs the sensor name as input.
+  [Adam.Dybbroe]
+
+- Add Sentinel-2 RSR. [Adam.Dybbroe]
+
+- Add support for Landsat-8 OLI. [Adam.Dybbroe]
+
+- Use the name PySpectral throughout. Improve documentation.
+  [Adam.Dybbroe]
+
+- Merge pull request #22 from pytroll/appveyor. [Adam Dybbroe]
+
+  Appveyor
+
+- Fixed unused imports and reuse parameters from utils.py.
+  [Adam.Dybbroe]
+
+- Comment out Appveyor tests for Py3.4. [Adam.Dybbroe]
+
+- Fix OS independent file paths for unittests. [Adam.Dybbroe]
+
+- Don't run doc tests in Appveyor. [Adam.Dybbroe]
+
+- Get the system dependent tmp dir via tempfile module. [Adam.Dybbroe]
+
+- Add Appveyor badge. [Adam.Dybbroe]
+
+- Install python-geotiepoints from PyPI instead of with conda.
+  [Adam.Dybbroe]
+
+- Add for Appveyor. [Adam.Dybbroe]
+
+v0.6.2 (2018-01-10)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.6.1 → 0.6.2. [Adam.Dybbroe]
+
+- Update changelog. [Adam.Dybbroe]
+
+- Change name of optional (red) band to "redband" [Adam.Dybbroe]
+
+- Fix band naming for OLCI. [Adam.Dybbroe]
+
+v0.6.1 (2018-01-08)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.6.0 → 0.6.1. [Adam.Dybbroe]
+
+- Make it possible to plot multiple bands matching the requested
+  wavelength. [Adam.Dybbroe]
+
+- Bugfix check for wavelength range in nir reflectance, and improve unit
+  tests. [Adam.Dybbroe]
+
+- Add static data for unit testing. [Adam.Dybbroe]
+
+- Improve unit test coverage. [Adam.Dybbroe]
+
+- Update badges: Refer to develop instead of pre-master. [Adam.Dybbroe]
+
+v0.6.0 (2018-01-05)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.5.2 → 0.6.0. [Adam.Dybbroe]
+
+v0.5.2 (2018-01-05)
+-------------------
+
+Fix
+~~~
+
+- Bugfix: Move appdirs usage to the config. [Adam.Dybbroe]
+
+Other
+~~~~~
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.5.1 → 0.5.2. [Adam.Dybbroe]
+
+- Improve documentation of the NIR emissive part of the 3.x reflectance
+  derivations, using more condensed code example. [Adam.Dybbroe]
+
+- Merge pull request #20 from pytroll/appdirs. [Adam Dybbroe]
+
+  Appdirs
+
+- Bugfix, module misspelled. [Adam.Dybbroe]
+
+- Merge branch 'develop' into appdirs. [Adam.Dybbroe]
+
+  Conflicts:
+  	pyspectral/utils.py
+
+- Merge pull request #19 from pytroll/radiance_tb_conversions. [Adam
+  Dybbroe]
+
+  Radiance tb conversions
+
+- Fix code quality issues from Codacy and Codeclimate. [Adam.Dybbroe]
+
+- Add tests for emissive part of the r37 refl derivations and
+  radiance2tb conversions. [Adam.Dybbroe]
+
+- Fix bug for wavenumber conversion in native seviri rsr reader. The bug
+  affected the conversion in python 3, and probably not in Py2.
+  [Adam.Dybbroe]
+
+- Fix doc tests. [Adam.Dybbroe]
+
+- Fixing doc tests for python 3. [Adam.Dybbroe]
+
+- Merge branch 'radiance_tb_conversions' of
+  github.com:pytroll/pyspectral into radiance_tb_conversions.
+  [Adam.Dybbroe]
+
+  Conflicts:
+  	doc/37_reflectance.rst
+
+
+- Fix doc tests for py3. [Adam.Dybbroe]
+
+- Utf-8 decode of strings from rsr hdf5 files. Needed for python 3.
+  [Adam.Dybbroe]
+
+- Fix for doc tests. [Adam.Dybbroe]
+
+- Rearrange and improve documentation on 3.7 reflectance derivations.
+  [Adam.Dybbroe]
+
+- Move up radiance definitions and theory a bit. [Adam.Dybbroe]
+
+- Fix for VIIRS I- and M-bands. Make it possible to make tb<->radiance
+  conversions without the LUT. Fix derivation of emissive part.
+  [Adam.Dybbroe]
+
+- Fix tb-radiance conversion so it can only be done on the specific band
+  in question. [Adam.Dybbroe]
+
+- Rearrange doc pages, moving definitions and theory up a bit. Clean
+  away mpop examples. This should be in the PyTroll Gallery instead.
+  [Adam.Dybbroe]
+
+- Fix complaints by flake8. [Adam.Dybbroe]
+
+- Allow for derivation of the band integrated radiance, in addition to
+  the default, which is the spectral radiance for the band.
+  [Adam.Dybbroe]
+
+- Overload the _get_rsr method for the SEVIRI class. RSR data should be
+  ignored in the special case of SEVIRI when using off line coefficients
+  for the Tb-Radiance conversions. [Adam.Dybbroe]
+
+- Remove method integrate_response. RSR integration is provided by the
+  rsr_reader. [Adam.Dybbroe]
+
+- Clean up code, more clear separation of the radiance-tb conversion
+  based on RSR and offline derived coefficients for SEVIRI. RSR integral
+  is part of the rad-tb conversion class now. Improve unit tests.
+  [Adam.Dybbroe]
+
+- Add definition of band integrated radiance. [Adam.Dybbroe]
+
+- Improved function documentation: Specify what the arguments are.
+  [Adam.Dybbroe]
+
+- Use appdirs to standardize where pyspectral downloads LUTs and RSR
+  files. [Adam.Dybbroe]
+
+- Fix spelling error in doc-pages. [Adam.Dybbroe]
+
+- Add PR and Issue templates - copies from satpy. [Adam.Dybbroe]
+
+v0.5.1 (2017-12-13)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.5.0 → 0.5.1. [Adam.Dybbroe]
+
+- Correct doc strings replacing SLSTR with OLCI. [Adam.Dybbroe]
+
+- Reduce redundant Badge. [Adam.Dybbroe]
+
+- Merge pull request #10 from codacy-badger/codacy-badge. [Adam Dybbroe]
+
+  Add a Codacy badge to README.md
+
+- Add Codacy badge. [The Codacy Badger]
+
+- Corrects the md5sum of the newly updated rsr tar file. [Adam.Dybbroe]
+
+- Bugfix Terra modis response functions. [Adam.Dybbroe]
+
+  Some of the original responses have a few -99 as a response,
+  which create wrong central wavelengths in pyspectral
+
+- Instrument names are lower case, variable upper/lower case can be used
+  in API. [Adam.Dybbroe]
+
+- Consistent instrument naming, lower case throughout. [Adam.Dybbroe]
+
+- Fix md5sum of latest rsr tar file at zenodo. [Adam.Dybbroe]
+
+v0.5.0 (2017-10-18)
+-------------------
+
+Fix
+~~~
+
+- Bugfix: default yaml config file had a missing ':' [Adam.Dybbroe]
+
+Other
+~~~~~
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.4.3 → 0.5.0. [Adam.Dybbroe]
+
+- Merge pull request #12 from pytroll/yaml_jpss1. [Adam Dybbroe]
+
+  Yaml jpss1
+  Tests are passing and coverage has not decreased. Now also RTD builds fine, so ready to merge
+
+- Remove old empty readthedocs req file. [Adam.Dybbroe]
+
+- Revers back to mocking h5py and tqdm when building documentation. Add
+  RTD requirements file. [Adam.Dybbroe]
+
+- Don't mock h5py and tqdm. [Adam.Dybbroe]
+
+- Mock trollsift.parser. [Adam.Dybbroe]
+
+- Bugfix, adapt raw readers to new yaml config. [Adam.Dybbroe]
+
+- Mock geotiepoints and not requests for sphinx. [Adam.Dybbroe]
+
+- Add a seperate config.py module. [Adam.Dybbroe]
+
+- Try please RTD concerning yaml. [Adam.Dybbroe]
+
+- Don't mock yaml and six in conf.py. [Adam.Dybbroe]
+
+- Fix automatc versioning in conf.py and mock some more 3rd party sw.
+  [Adam.Dybbroe]
+
+- Update documentation of customized config setting. [Adam.Dybbroe]
+
+- Show inheritance in api doc. [Adam.Dybbroe]
+
+- Bring installation documentation up to date. [Adam.Dybbroe]
+
+- Bugfix unit testing the rsr reader. [Adam.Dybbroe]
+
+- Added Himawari-9 and adjusted Himawari-8 AHI RSR files. [Adam.Dybbroe]
+
+- Add rst file with table with supported platforms and sensors.
+  [Adam.Dybbroe]
+
+- Add new fromt page header (montage) image. [Adam.Dybbroe]
+
+- Add small tool to compare two pyspectral rsr files. [Adam.Dybbroe]
+
+- Add table showing which sensors are supported. [Adam.Dybbroe]
+
+- Fix original ahi reader to read original excell sheets and add
+  Himawari-9. [Adam.Dybbroe]
+
+- Add unittesting for the generic RSR reader. [Adam.Dybbroe]
+
+- Bugfix, download rsr files from zenodo, and improve code style.
+  [Adam.Dybbroe]
+
+- Improve code style (following Codacy) [Adam.Dybbroe]
+
+- Update to new RSR tar file including JPSS-1 VIIRS. [Adam.Dybbroe]
+
+- Get the platform_name and sensor from the hdf5 file if not specified
+  in the call. [Adam.Dybbroe]
+
+- Store the sensor name in the hdf5 file. [Adam.Dybbroe]
+
+- Add NOAA-20 (JPSS-1) rsr and update Suomi-NPP one with more meta data.
+  [Adam.Dybbroe]
+
+- Add pyyaml in the requirements. [Adam.Dybbroe]
+
+- Remove old config file. [Adam.Dybbroe]
+
+- Make it possible to instatiate the RSR class with the rsr filename.
+  [Adam.Dybbroe]
+
+- Fix for yaml config. [Adam.Dybbroe]
+
+- Don't show plot when running doctests. [Adam.Dybbroe]
+
+- Add yaml config file, update for JPSS-1 VIIRS and enhance plotting and
+  documentation. [Adam.Dybbroe]
+
+v0.4.3 (2017-10-02)
+-------------------
+
+Fix
+~~~
+
+- Bugfix: Desert aerosol LUT table changed. [Adam.Dybbroe]
+
+Other
+~~~~~
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.4.2 → 0.4.3. [Adam.Dybbroe]
+
+- Improve code style: Make codacy more happy. [Adam.Dybbroe]
+
+- More plotting facilities and add documentation on spectral response
+  sources. [Adam.Dybbroe]
+
+- Use Rayleigh LUTs from Zenodo. [Adam.Dybbroe]
+
+v0.4.2 (2017-09-15)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.4.1 → 0.4.2. [Adam.Dybbroe]
+
+- Fix doc tests and get rid of duplicate code. [Adam.Dybbroe]
+
+- Update link to internally formatted RSR data. [Adam.Dybbroe]
+
+- Added unit test for atm correction. [Adam.Dybbroe]
+
+- Add simple framework for it atm correction, with old DWD parametric
+  method for a start. [Adam.Dybbroe]
+
+- Bugfixing documentation pages. [Adam.Dybbroe]
+
+- Enhance documentation: add simple example how to work with rsr data.
+  [Adam.Dybbroe]
+
+- Add debug_on function (copy from satpy) [Adam.Dybbroe]
+
+- RSR data is downloaded from Zenodo. [Adam.Dybbroe]
+
+- Update Dropbox links to LUTs. [Adam.Dybbroe]
+
+- Track the rsr tar file (again) [Adam.Dybbroe]
+
+- Update git-lfs tracked file. [Adam.Dybbroe]
+
+- Fix dropbox link for rsr data file and rayleigh only lut.
+  [Adam.Dybbroe]
+
+- Moving the rsr data into the package etc dir. [Adam.Dybbroe]
+
+- Adding rsr-data to git-lfs. [Adam.Dybbroe]
+
+v0.4.1 (2017-07-14)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.4.0 → 0.4.1. [Adam.Dybbroe]
+
+- Deactivate the SEVIRI system tests - these should be in the pytroll
+  gallery instead. [Adam.Dybbroe]
+
+- Add rayleight corrected image dor documentation. [Adam.Dybbroe]
+
+- Clean up for easier maintanance. [Adam.Dybbroe]
+
+- Fix requirements: python-geotiepoints >= 1.1.1 is required.
+  [Adam.Dybbroe]
+
+- Add Codacy integration. [Adam.Dybbroe]
+
+- Add Scrutinizer integration. [Adam.Dybbroe]
+
+- Correct code version in documentation. [Adam.Dybbroe]
+
+- Add integration with codeclimate. [Adam.Dybbroe]
+
+v0.4.0 (2017-05-19)
+-------------------
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.3.4 → 0.4.0. [Adam.Dybbroe]
+
+- Merge branch 'develop' of github.com:pytroll/pyspectral into develop.
+  [Adam.Dybbroe]
+
+- Merge pull request #9 from pytroll/autofix/wrapped2_to3_fix. [Adam
+  Dybbroe]
+
+  Fix "Prefer `format()` over string interpolation operator" issue
+
+- Migrated `%` string formating. [Cody]
+
+- Merge branch 'feature-new-rayleigh' into develop. [Adam.Dybbroe]
+
+- Fix doctest. [Adam.Dybbroe]
+
+- Fall back to scipy if Cython is not available. [Adam.Dybbroe]
+
+- Fix nearest wavelength search. [Martin Raspaud]
+
+- Clip angles using bounds given in hdf5 file instead of hardcoded
+  values. [Adam.Dybbroe]
+
+- Try without using with_system_site_packages for Travis. [Adam.Dybbroe]
+
+- Update requirements file. [Adam.Dybbroe]
+
+- Try solve for slow scipy building on travis. [Adam.Dybbroe]
+
+- Clip satellite-zenith angles outside range. [Adam.Dybbroe]
+
+- Update url's for all aerosol-types. [Adam.Dybbroe]
+
+- Add all aerosol-simulations. [Adam.Dybbroe]
+
+- Don't install standard system-site scipy. [Adam.Dybbroe]
+
+- Fix azimuth angle bug. And prepare for several aerosol types.
+  [Adam.Dybbroe]
+
+- Interpolate Rayleigh lut in 3d with fixed wavelength. [Martin Raspaud]
+
+- Try fix scipy installation on travis for py2.7. [Adam.Dybbroe]
+
+- Work on non-masked arrays in rayleigh correction and fix for low sun
+  elevation. [Adam.Dybbroe]
+
+- Interpolate rayleigh lut on data points directly. [Martin Raspaud]
+
+- Require scipy 0.14. [Adam.Dybbroe]
+
+- Minimize memory footprint in rayleigh correction. [Adam.Dybbroe]
+
+  However, still requiring too much memory!
+
+- New rayleigh correction - Using 4d interpolation of RTM tables.
+  [Adam.Dybbroe]
+
+- Fix typo in doc string. [Adam.Dybbroe]
+
+- Simplify out of bounds check. [Adam.Dybbroe]
+
+- Use format() for string formating and simplify code improving
+  readability. [Adam.Dybbroe]
+
+- Bugfix in string formatting. [Adam.Dybbroe]
+
+- Use format() instead of string interpolation operator. [Adam.Dybbroe]
+
+- Class documented. [Adam.Dybbroe]
+
+- Improve string formating. [Adam.Dybbroe]
+
+- Improve doc-strings and syntax. [Adam.Dybbroe]
+
+- Add quantifiedcode badge. [Adam.Dybbroe]
+
+v0.3.4 (2017-04-03)
+-------------------
+
+Fix
+~~~
+
+- Bugfix: unttests and py2.7. [Adam.Dybbroe]
+
+Other
+~~~~~
+
+- Update changelog. [Adam.Dybbroe]
+
+- Bump version: 0.3.3 → 0.3.4. [Adam.Dybbroe]
+
+- Merge branch 'pre-master' into release-v0.3.4. [Adam.Dybbroe]
+
+- Pep8 and increasing pylint score. [Adam.Dybbroe]
+
+- Add test module. [Adam.Dybbroe]
+
+- Add unitest for aatsr reader. [Adam.Dybbroe]
+
+- Remove python 3.3 from travis: does not build scipy. [Adam.Dybbroe]
+
+- Pep8 and improving pylint scores. [Adam.Dybbroe]
+
+- Add TRAVIS tests on various Python 3 versions. [Adam.Dybbroe]
+
+- Travis fix: Remove system-site-packages on anything else than 2.7.
+  [Adam.Dybbroe]
+
+- Don't set python version for travis. [Adam.Dybbroe]
+
+- Activate python3 testing to travis. [Adam.Dybbroe]
+
+- Make Python 3 compatible. [Adam.Dybbroe]
+
+- Epsilon is a input parameter not a hardcoded value anymore.
+  [Adam.Dybbroe]
+
+- Improved sun-sat viewing figure for docs. [Adam.Dybbroe]
+
+- Fix unittests near-ir reflectance. [Adam.Dybbroe]
+
+- LUT file can be generated even without having the filename defined in
+  config. [Adam.Dybbroe]
+
+  Also, only NIR bands in the 3.5-3.95 range is supported
+
+- Remove duplicate code and move get_bandname_from_wavelength to utils.
+  [Adam.Dybbroe]
+
+- Fixed the 180 degree azimuth bug in the Rayleigh correction, and
+  improved documentation. [Adam.Dybbroe]
+
+- Merge pull request #5 from pytroll/rayleigh-speedup. [Adam Dybbroe]
+
+  Speedup and optimize rayleigh computations
+
+- Remove unneeded variable. [Martin Raspaud]
+
+- Speedup and optimize rayleigh computations. [Martin Raspaud]
+
+- Remove old code commentedt out. [Adam.Dybbroe]
+
+- Correctied emissive part: Allow reflectances outside [0,1] and apply
+  correction. [Adam.Dybbroe]
+
+- More strict masking: Avoid crazy r39 values due to very small or
+  negative denominators. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.3' into pre-master. [Adam.Dybbroe]
+
+- Merge branch 'release-v0.3.3' [Adam.Dybbroe]
+
 v0.3.3 (2017-01-13)
 -------------------
 

@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015 Adam.Dybbroe
+# Copyright (c) 2013-2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -89,7 +89,7 @@ class SolarIrradianceSpectrum(object):
 
     def convert2wavenumber(self):
         """
-        Convert from wavelengths to wavenumber. 
+        Convert from wavelengths to wavenumber.
 
         Units:
           Wavelength: micro meters (1e-6 m)
@@ -150,22 +150,22 @@ class SolarIrradianceSpectrum(object):
                 wvl = rsr['wavelength'] * scale
                 resp = rsr['response']
             else:
-                wvl = rsr['det-%d' % detector]['wavelength'] * scale
-                resp = rsr['det-%d' % detector]['response']
+                wvl = rsr['det-{0:d}'.format(detector)]['wavelength'] * scale
+                resp = rsr['det-{0:d}'.format(detector)]['response']
         else:
             if 'response' in rsr:
                 wvl = rsr['wavenumber'] * scale
                 resp = rsr['response']
             else:
-                wvl = rsr['det-%d' % detector]['wavenumber'] * scale
-                resp = rsr['det-%d' % detector]['response']
+                wvl = rsr['det-{0:d}'.format(detector)]['wavenumber'] * scale
+                resp = rsr['det-{0:d}'.format(detector)]['response']
 
         start = wvl[0]
         end = wvl[-1]
         # print "Start and end: ", start, end
         LOG.debug("Begin and end wavelength/wavenumber: %f %f ", start, end)
         dlambda = self._dlambda
-        xspl = np.linspace(start, end, (end - start) / dlambda)
+        xspl = np.linspace(start, end, round((end - start) / self._dlambda) + 1)
 
         ius = InterpolatedUnivariateSpline(wvl, resp)
         resp_ipol = ius(xspl)
@@ -223,7 +223,7 @@ class SolarIrradianceSpectrum(object):
         else:
             start, end = ival_wavelength
 
-        xspl = np.linspace(start, end, (end - start) / self._dlambda)
+        xspl = np.linspace(start, end, round((end - start) / self._dlambda) + 1)
         if self.wavespace == 'wavelength':
             ius = InterpolatedUnivariateSpline(
                 self.wavelength, self.irradiance)
@@ -255,25 +255,24 @@ class SolarIrradianceSpectrum(object):
         else:
             raise TypeError('Neither wavelengths nor wavenumbers available!')
 
-        import pylab
+        from matplotlib import pyplot as plt
         from matplotlib import rcParams
         rcParams['text.usetex'] = True
         rcParams['text.latex.unicode'] = True
 
-        fig = pylab.figure(figsize=(8, 4))
+        fig, axl = plt.subplots(figsize=(8, 4))
         plot_title = "Solar Irradiance Spectrum"
-        pylab.title(plot_title)
-        axl = fig.add_subplot(111)
+        axl.set_title(plot_title)
 
         axl.plot(xwl, yir, '-', color=color)
 
-        pylab.xlabel(xlabel)
-        pylab.ylabel(ylabel)
-        pylab.xlim(xlim)
-        pylab.ylim([0, yir.max()])
+        axl.set_xlabel(xlabel)
+        axl.set_ylabel(ylabel)
+        axl.set_xlim(xlim)
+        axl.set_ylim([0, yir.max()])
         axl.grid(True)
 
         if plotname is None:
-            pylab.show()
+            plt.show()
         else:
             fig.savefig(plotname)

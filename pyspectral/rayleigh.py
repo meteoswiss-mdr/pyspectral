@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016 Adam.Dybbroe
+# Copyright (c) 2016-2018 Pytroll
 
 # Author(s):
 
@@ -21,65 +21,91 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Rayleigh correction of shortwave imager bands in the wavelength range 400 to
-800 nm
+"""Atmospheric correction of shortwave imager bands in the wavelength range 400
+to 800 nm
 
 """
-
-import logging
 import os
+import time
+import logging
+from six import integer_types
+
 import h5py
 import numpy as np
 
-from pyspectral import get_config
+try:
+    from dask.array import (where, zeros, clip, rad2deg, deg2rad, cos, arccos,
+                            atleast_2d, Array, map_blocks, from_array)
+    import dask.array as da
+    HAVE_DASK = True
+    # try:
+    #     # use serializable h5py wrapper to make sure files are closed properly
+    #     import h5pickle as h5py
+    # except ImportError:
+    #     pass
+except ImportError:
+    from numpy import where, zeros, clip, rad2deg, deg2rad, cos, arccos, atleast_2d
+    da = None
+    map_blocks = None
+    from_array = None
+    Array = None
+    HAVE_DASK = False
+
+from geotiepoints.multilinear import MultilinearInterpolator
 from pyspectral.rsr_reader import RelativeSpectralResponse
-from pyspectral.utils import (BANDNAMES, INSTRUMENTS, get_central_wave,
-                              get_rayleigh_reflectance, download_luts,
-                              RAYLEIGH_LUT_DIRS)
+from pyspectral.utils import (INSTRUMENTS, RAYLEIGH_LUT_DIRS,
+                              AEROSOL_TYPES, ATMOSPHERES,
+                              BANDNAMES,
+                              ATM_CORRECTION_LUT_VERSION,
+                              download_luts, get_central_wave,
+                              get_bandname_from_wavelength)
+
+from pyspectral.config import get_config
 
 LOG = logging.getLogger(__name__)
 
-ATMOSPHERES = {'subarctic summer': 4, 'subarctic winter': 5,
-               'midlatitude summer': 6, 'midlatitude winter': 7,
-               'tropical': 8, 'us-standard': 9}
 
+class BandFrequencyOutOfRange(ValueError):
+    """Exception when the band frequency is out of the visible range"""
 
-class BandFrequencyOutOfRange(Exception):
     pass
 
 
 class Rayleigh(object):
+    """Container for the atmospheric correction of satellite imager bands.
 
-    """Container for the Rayleigh scattering correction of satellite imager short
-    wave bands
+    This class removes background contributions of Rayleigh scattering of
+    molecules and Mie scattering and absorption by aerosols.
 
     """
 
     def __init__(self, platform_name, sensor, **kwargs):
+        """Initialize class and determine LUT to use."""
         self.platform_name = platform_name
         self.sensor = sensor
         self.coeff_filename = None
+        options = get_config()
+        self.do_download = False
+        self._lutfiles_version_uptodate = False
 
-        if 'atmosphere' in kwargs:
-            atm_type = kwargs['atmosphere']
-        else:
-            atm_type = 'subarctic summer'
+        atm_type = kwargs.get('atmosphere', 'us-standard')
+        if atm_type not in ATMOSPHERES:
+            raise AttributeError('Atmosphere type not supported! ' +
+                                 'Need to be one of {}'.format(str(ATMOSPHERES)))
 
-        if 'rural_aerosol' in kwargs and kwargs['rural_aerosol']:
-            rayleigh_dir = RAYLEIGH_LUT_DIRS['rural_aerosol']
-        else:
-            rayleigh_dir = RAYLEIGH_LUT_DIRS['rayleigh_only']
+        aerosol_type = kwargs.get('aerosol_type', 'marine_clean_aerosol')
+        self._aerosol_type = aerosol_type
+
+        if aerosol_type not in AEROSOL_TYPES:
+            raise AttributeError('Aerosol type not supported! ' +
+                                 'Need to be one of {0}'.format(str(AEROSOL_TYPES)))
+
+        rayleigh_dir = RAYLEIGH_LUT_DIRS[aerosol_type]
 
         if atm_type not in ATMOSPHERES.keys():
             LOG.error("Atmosphere type %s not supported", atm_type)
 
         LOG.info("Atmosphere chosen: %s", atm_type)
-
-        conf = get_config()
-
-        options = {}
-        for option, value in conf.items('general', raw=True):
-            options[option] = value
 
         # Try fix instrument naming
         instr = INSTRUMENTS.get(platform_name, sensor)
@@ -90,121 +116,224 @@ class Rayleigh(object):
 
         self.sensor = sensor.replace('/', '')
 
-        # Conversion from standard band names to pyspectral band naming.
-        # Preferably take from config! FIXME!
-        self.sensor_bandnames = {'B01': 'ch1',
-                                 'B02': 'ch2',
-                                 'B03': 'ch3',
-                                 'M03': 'M3',
-                                 'M04': 'M4',
-                                 'M05': 'M5',
-                                 }
+        if 'download_from_internet' in options and options['download_from_internet']:
+            self.do_download = True
+
+        if (self._aerosol_type in ATM_CORRECTION_LUT_VERSION and
+                self._get_lutfiles_version() == ATM_CORRECTION_LUT_VERSION[self._aerosol_type]['version']):
+            self._lutfiles_version_uptodate = True
 
         ext = atm_type.replace(' ', '_')
-        lutname = "rayleigh_lut_const_azidiff_%s.h5" % ext
-        self.coeff_filename = os.path.join(rayleigh_dir, lutname)
+        lutname = "rayleigh_lut_{0}.h5".format(ext)
+        self.reflectance_lut_filename = os.path.join(rayleigh_dir, lutname)
 
-        if not os.path.exists(self.coeff_filename):
-            LOG.warning("No lut file %s on disk", self.coeff_filename)
+        if not self._lutfiles_version_uptodate and self.do_download:
             LOG.info("Will download from internet...")
-            download_luts()
+            download_luts(aerosol_type=aerosol_type)
 
-        if (not os.path.exists(self.coeff_filename) or
-                not os.path.isfile(self.coeff_filename)):
+        if (not os.path.exists(self.reflectance_lut_filename) or
+                not os.path.isfile(self.reflectance_lut_filename)):
             raise IOError('pyspectral file for Rayleigh scattering correction ' +
                           'does not exist! Filename = ' +
-                          str(self.coeff_filename))
+                          str(self.reflectance_lut_filename))
 
-        LOG.debug('LUT filename: %s', str(self.coeff_filename))
+        LOG.debug('LUT filename: %s', str(self.reflectance_lut_filename))
+        self._rayl = None
+        self._wvl_coord = None
+        self._azid_coord = None
+        self._satz_sec_coord = None
+        self._sunz_sec_coord = None
+
+    def _get_lutfiles_version(self):
+        """Check the version of the atm correction luts from the version file in the
+           specific aerosol correction directory
+
+        """
+        basedir = RAYLEIGH_LUT_DIRS[self._aerosol_type]
+        lutfiles_version_path = os.path.join(basedir,
+                                             ATM_CORRECTION_LUT_VERSION[self._aerosol_type]['filename'])
+
+        if not os.path.exists(lutfiles_version_path):
+            return "v0.0.0"
+
+        with open(lutfiles_version_path, 'r') as fpt:
+            # Get the version from the file
+            return fpt.readline().strip()
 
     def get_effective_wavelength(self, bandname):
         """Get the effective wavelength with Rayleigh scattering in mind"""
-
         try:
             rsr = RelativeSpectralResponse(self.platform_name, self.sensor)
-        except IOError:
+        except(IOError, OSError):
             LOG.exception(
                 "No spectral responses for this platform and sensor: %s %s", self.platform_name, self.sensor)
-            if isinstance(bandname, (float, int, long)):
+            if isinstance(bandname, (float, integer_types)):
                 LOG.warning(
                     "Effective wavelength is set to the requested band wavelength = %f", bandname)
                 return bandname
-            raise
+            return None
 
         if isinstance(bandname, str):
-            bandname = self.sensor_bandnames.get(bandname, bandname)
-        elif isinstance(bandname, (float, int, long)):
-            if bandname < 0.4 or bandname > 0.8:
+            bandname = BANDNAMES.get(self.sensor, BANDNAMES['generic']).get(bandname, bandname)
+        elif isinstance(bandname, (float, integer_types)):
+            if not(0.4 < bandname < 0.8):
                 raise BandFrequencyOutOfRange(
                     'Requested band frequency should be between 0.4 and 0.8 microns!')
-            bandname = get_bandname_from_wavelength(bandname, rsr)
+            bandname = get_bandname_from_wavelength(self.sensor, bandname, rsr.rsr)
 
         wvl, resp = rsr.rsr[bandname][
             'det-1']['wavelength'], rsr.rsr[bandname]['det-1']['response']
 
-        return get_central_wave(wvl, resp, weight=1. / wvl**4)
+        cwvl = get_central_wave(wvl, resp, weight=1. / wvl**4)
+        LOG.debug("Band name: %s  Effective wavelength: %f", bandname, cwvl)
 
-    def get_poly_coeff(self):
-        """Extract the polynomial fit coefficients from file"""
+        return cwvl
 
-        with h5py.File(self.coeff_filename, 'r') as h5f:
-            tab = h5f['coeff'][:]
-            wvl = h5f['wavelengths'][:]
-            azidiff = h5f['azimuth_difference'][:]
+    def get_reflectance_lut(self):
+        """Read the LUT with reflectances as a function of wavelength, satellite zenith
+        secant, azimuth difference angle, and sun zenith secant
 
-        return tab, wvl, azidiff
+        """
+        if self._rayl is None:
+            lut_vars = get_reflectance_lut(self.reflectance_lut_filename)
+            self._rayl = lut_vars[0]
+            self._wvl_coord = lut_vars[1]
+            self._azid_coord = lut_vars[2]
+            self._satz_sec_coord = lut_vars[3]
+            self._sunz_sec_coord = lut_vars[4]
+        return self._rayl, self._wvl_coord, self._azid_coord,\
+            self._satz_sec_coord, self._sunz_sec_coord
 
-    def get_reflectance(self, sun_zenith, sat_zenith, azidiff, bandname,
-                        blueband=None):
-        """Get the reflectance from the thre sun-sat angles."""
+    def get_reflectance(self, sun_zenith, sat_zenith, azidiff, bandname, redband=None):
+        """Get the reflectance from the three sun-sat angles"""
         # Get wavelength in nm for band:
-        wvl = self.get_effective_wavelength(bandname) * 1000.0
-        coeff, wvl_coord, azid_coord = self.get_poly_coeff()
+        if isinstance(bandname, float):
+            LOG.warning('A wavelength is provided instead of band name - ' +
+                        'disregard the relative spectral responses and assume ' +
+                        'it is the effective wavelength: %f (micro meter)', bandname)
+            wvl = bandname * 1000.0
+        else:
+            wvl = self.get_effective_wavelength(bandname)
+            if wvl is None:
+                LOG.error("Can't get effective wavelength for band %s on platform %s and sensor %s",
+                          str(bandname), self.platform_name, self.sensor)
+                return None
+            else:
+                wvl = wvl * 1000.0
 
-        if wvl > wvl_coord.max() or wvl < wvl_coord.min():
+        rayl, wvl_coord, azid_coord, satz_sec_coord, sunz_sec_coord = \
+            self.get_reflectance_lut()
+
+        # force dask arrays
+        compute = False
+        if HAVE_DASK and not isinstance(sun_zenith, Array):
+            compute = True
+            sun_zenith = from_array(sun_zenith, chunks=sun_zenith.shape)
+            sat_zenith = from_array(sat_zenith, chunks=sat_zenith.shape)
+            azidiff = from_array(azidiff, chunks=azidiff.shape)
+            if redband is not None:
+                redband = from_array(redband, chunks=redband.shape)
+
+        clip_angle = rad2deg(arccos(1. / sunz_sec_coord.max()))
+        sun_zenith = clip(sun_zenith, 0, clip_angle)
+        sunzsec = 1. / cos(deg2rad(sun_zenith))
+        clip_angle = rad2deg(arccos(1. / satz_sec_coord.max()))
+        sat_zenith = clip(sat_zenith, 0, clip_angle)
+        satzsec = 1. / cos(deg2rad(sat_zenith))
+        shape = sun_zenith.shape
+
+        if not(wvl_coord.min() < wvl < wvl_coord.max()):
             LOG.warning(
-                "Effective wavelength for band %s outside 400-800 nm range!", str(bandname))
+                "Effective wavelength for band %s outside 400-800 nm range!",
+                str(bandname))
             LOG.info(
                 "Set the rayleigh/aerosol reflectance contribution to zero!")
-            return np.zeros(sun_zenith.shape)
+            if HAVE_DASK:
+                chunks = sun_zenith.chunks if redband is None \
+                    else redband.chunks
+                res = zeros(shape, chunks=chunks)
+                return res.compute() if compute else res
+            else:
+                return zeros(shape)
 
-        idx = np.sqrt((wvl_coord - wvl)**2).argsort()[0]
-        wvl1 = wvl_coord[idx]
-        wvl2 = wvl_coord[idx + 1]
+        idx = np.searchsorted(wvl_coord, wvl)
+        wvl1 = wvl_coord[idx - 1]
+        wvl2 = wvl_coord[idx]
 
-        shape = sun_zenith.shape
-        c1_ = coeff[idx, np.round(azidiff).astype('i').ravel(), :].transpose().reshape(
-            21, shape[0], shape[1])
-        c2_ = coeff[idx + 1, np.round(azidiff).astype('i').ravel(), :].transpose().reshape(
-            21, shape[0], shape[1])
-        sun_zenith = np.clip(sun_zenith, 0, 88.)
-        res1 = get_rayleigh_reflectance(c1_, sun_zenith, sat_zenith)
-        res2 = get_rayleigh_reflectance(c2_, sun_zenith, sat_zenith)
+        fac = (wvl2 - wvl) / (wvl2 - wvl1)
+        raylwvl = fac * rayl[idx - 1, :, :, :] + (1 - fac) * rayl[idx, :, :, :]
+        tic = time.time()
 
-        # Bilinear interpolation
-        res = ((res2 - res1) * wvl + res1 * wvl2 - res2 * wvl1) / (wvl2 - wvl1)
-        res *= 100
+        smin = [sunz_sec_coord[0], azid_coord[0], satz_sec_coord[0]]
+        smax = [sunz_sec_coord[-1], azid_coord[-1], satz_sec_coord[-1]]
+        orders = [
+            len(sunz_sec_coord), len(azid_coord), len(satz_sec_coord)]
+        f_3d_grid = atleast_2d(raylwvl.ravel())
 
-        if blueband is not None:
-            res = np.where(np.less(blueband, 20.), res,
-                           (1 - (blueband - 20) / 80) * res)
+        if HAVE_DASK and isinstance(smin[0], Array):
+            # compute all of these at the same time before passing to the interpolator
+            # otherwise they are computed separately
+            smin, smax, orders, f_3d_grid = da.compute(smin, smax, orders, f_3d_grid)
+        minterp = MultilinearInterpolator(smin, smax, orders)
+        minterp.set_values(f_3d_grid)
 
-        return np.clip(res, 0, 100)
+        def _do_interp(minterp, sunzsec, azidiff, satzsec):
+            interp_points2 = np.vstack((sunzsec.ravel(),
+                                        180 - azidiff.ravel(),
+                                        satzsec.ravel()))
+            res = minterp(interp_points2)
+            return res.reshape(sunzsec.shape)
+
+        if HAVE_DASK:
+            ipn = map_blocks(_do_interp, minterp, sunzsec, azidiff,
+                             satzsec, dtype=raylwvl.dtype,
+                             chunks=azidiff.chunks)
+        else:
+            ipn = _do_interp(minterp, sunzsec, azidiff, satzsec)
+
+        LOG.debug("Time - Interpolation: {0:f}".format(time.time() - tic))
+
+        ipn *= 100
+        res = ipn
+        if redband is not None:
+            res = where(redband < 20., res,
+                        (1 - (redband - 20) / 80) * res)
+
+        res = clip(res, 0, 100)
+        if compute:
+            res = res.compute()
+        return res
 
 
-def get_bandname_from_wavelength(wavelength, rsr):
-    """Get the bandname from h5 rsr provided the approximate wavelength."""
-    epsilon = 0.1
-    # channel_list = [channel for channel in rsr.rsr if abs(
-    # rsr.rsr[channel]['det-1']['central_wavelength'] - wavelength) < epsilon]
+def get_reflectance_lut(filename):
+    """Read the LUT with reflectances as a function of wavelength, satellite
+    zenith secant, azimuth difference angle, and sun zenith secant
 
-    chdist_min = 2.0
-    chfound = None
-    for channel in rsr.rsr:
-        chdist = abs(
-            rsr.rsr[channel]['det-1']['central_wavelength'] - wavelength)
-        if chdist < chdist_min and chdist < epsilon:
-            chdist_min = chdist
-            chfound = channel
+    """
 
-    return BANDNAMES.get(chfound, chfound)
+    h5f = h5py.File(filename, 'r')
+
+    tab = h5f['reflectance']
+    wvl = h5f['wavelengths']
+    azidiff = h5f['azimuth_difference']
+    satellite_zenith_secant = h5f['satellite_zenith_secant']
+    sun_zenith_secant = h5f['sun_zenith_secant']
+
+    if HAVE_DASK:
+        tab = from_array(tab, chunks=(10, 10, 10, 10))
+        wvl = wvl[:]  # no benefit to dask-ifying this
+        azidiff = from_array(azidiff, chunks=(1000,))
+        satellite_zenith_secant = from_array(satellite_zenith_secant,
+                                             chunks=(1000,))
+        sun_zenith_secant = from_array(sun_zenith_secant,
+                                       chunks=(1000,))
+    else:
+        # load all of the data we are going to use in to memory
+        tab = tab[:]
+        wvl = wvl[:]
+        azidiff = azidiff[:]
+        satellite_zenith_secant = satellite_zenith_secant[:]
+        sun_zenith_secant = sun_zenith_secant[:]
+        h5f.close()
+
+    return tab, wvl, azidiff, satellite_zenith_secant, sun_zenith_secant

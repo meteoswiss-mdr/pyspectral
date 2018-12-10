@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2015, 2016, 2017 Adam.Dybbroe
+# Copyright (c) 2013 - 2018 PyTroll Community
+
 
 # Author(s):
 
@@ -21,38 +22,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Main module"""
+"""Pyspectral package init"""
 
-from pyspectral.version import __version__
-import logging
-import os
-
-LOG = logging.getLogger(__name__)
-
-import pkg_resources
-BUILTIN_CONFIG_FILE = pkg_resources.resource_filename(__name__,
-                                                      os.path.join('etc', 'pyspectral.cfg'))
-
-CONFIG_FILE = os.environ.get('PSP_CONFIG_FILE')
-
-if CONFIG_FILE is not None and (not os.path.exists(CONFIG_FILE) or
-                                not os.path.isfile(CONFIG_FILE)):
-    raise IOError(str(CONFIG_FILE) + " pointed to by the environment " +
-                  "variable PSP_CONFIG_FILE is not a file or does not exist!")
-
-
-def get_config():
-    """Get config from file"""
-
-    import ConfigParser
-
-    conf = ConfigParser.ConfigParser()
-    conf.read(BUILTIN_CONFIG_FILE)
-    if CONFIG_FILE is not None:
-        try:
-            conf.read(CONFIG_FILE)
-        except ConfigParser.NoSectionError:
-            LOG.info('Failed reading configuration file: %s',
-                     str(CONFIG_FILE))
-
-    return conf
+from .version import get_versions
+__version__ = get_versions()['version']
+del get_versions

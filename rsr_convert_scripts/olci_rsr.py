@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2016 Adam.Dybbroe
+# Copyright (c) 2016, 2017, 2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -26,28 +26,28 @@ Reading the Sentinel-3 OLCI relative spectral responses
 https://sentinel.esa.int/documents/247904/322304/OLCI+SRF+%28NetCDF%29/15cfd7a6-b7bc-4051-87f8-c35d765ae43a
 """
 
-RSRFILE = '/home/a000680/data/SpectralResponses/olci/OLCISRFNetCDF.nc4'
-
 from netCDF4 import Dataset
 import os.path
 from pyspectral.utils import convert2hdf5 as tohdf5
-
+from pyspectral.raw_reader import InstrumentRSR
 import logging
+
 LOG = logging.getLogger(__name__)
 
+RSRFILE = '/home/a000680/data/SpectralResponses/olci/OLCISRFNetCDF.nc4'
 
-OLCI_BAND_NAMES = ['ch1', 'ch2', 'ch3', 'ch4',
-                   'ch5', 'ch6', 'ch7', 'ch8',
-                   'ch9', 'ch10', 'ch11', 'ch12',
-                   'ch13', 'ch14', 'ch15', 'ch16',
-                   'ch17', 'ch18', 'ch19', 'ch20']
 
-from pyspectral.raw_reader import InstrumentRSR
+OLCI_BAND_NAMES = ['Oa01', 'Oa02', 'Oa03', 'Oa04',
+                   'Oa05', 'Oa06', 'Oa07', 'Oa08',
+                   'Oa09', 'Oa10', 'Oa11', 'Oa12',
+                   'Oa13', 'Oa14', 'Oa15', 'Oa16',
+                   'Oa17', 'Oa18', 'Oa19', 'Oa20',
+                   'Oa21']
 
 
 class OlciRSR(InstrumentRSR):
 
-    """Class for Envisat SLSTR RSR"""
+    """Class for Sentinel OLCI RSR"""
 
     def __init__(self, bandname, platform_name):
         """
@@ -61,18 +61,18 @@ class OlciRSR(InstrumentRSR):
 
         LOG.debug("Filename: %s", str(self.path))
         if os.path.exists(self.path):
-            self._load(bandname)
+            self._load()
         else:
             raise IOError("Couldn't find an existing file for this band: " +
                           str(self.bandname))
 
-    def _load(self, bandname, scale=0.001):
-        """Load the SLSTR relative spectral responses
+    def _load(self, scale=0.001):
+        """Load the OLCI relative spectral responses
         """
 
         ncf = Dataset(self.path, 'r')
 
-        bandnum = OLCI_BAND_NAMES.index(bandname)
+        bandnum = OLCI_BAND_NAMES.index(self.bandname)
         cam = 0
         view = 0
         resp = ncf.variables[
@@ -89,6 +89,7 @@ def main():
 
 
 def testplot():
+    """Just making a plot of the OLCI spectral response functions"""
 
     this = Dataset(RSRFILE, 'r')
     # There are 21 bands
@@ -111,7 +112,7 @@ def testplot():
                 'spectral_response_function'][0, cam, view, :]
             wvl = this.variables[
                 'spectral_response_function_wavelength'][0, cam, view, :]
-            label = 'Camera %d - view %d' % (cam + 1, view + 1)
+            label = 'Camera {0:d} - view {1:d}'.format(cam + 1, view + 1)
             ax.plot(wvl, resp, label=label)
     ax.set_xlim(380, 430)
     ax.legend()
@@ -119,5 +120,4 @@ def testplot():
     # pylab.show()
 
 if __name__ == "__main__":
-
     main()

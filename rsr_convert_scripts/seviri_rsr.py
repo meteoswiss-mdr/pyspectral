@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016, 2017 Adam.Dybbroe
+# Copyright (c) 2013-2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -29,13 +29,11 @@ satellites
 import os
 from xlrd import open_workbook
 import numpy as np
-
-import logging
-LOG = logging.getLogger(__name__)
-
-from pyspectral import get_config
-
+from pyspectral.config import get_config
 import pkg_resources
+import logging
+
+LOG = logging.getLogger(__name__)
 DATA_PATH = pkg_resources.resource_filename('pyspectral', 'data/')
 
 
@@ -52,18 +50,14 @@ class Seviri(object):
         default. Can be 'wavenumber' in which case the unit is in cm-1.
 
         """
-        conf = get_config()
+        options = get_config()
 
-        options = {}
-        for option, value in conf.items('seviri', raw=True):
-            options[option] = value
-
-        self.seviri_path = options.get('path')
+        self.seviri_path = options['seviri'].get('path')
         if not os.path.exists(self.seviri_path):
-            self.seviri_path = os.path.join(DATA_PATH, options.get('filename'))
+            self.seviri_path = os.path.join(
+                DATA_PATH, options['seviri'].get('filename'))
 
-        for option, value in conf.items('general', raw=True):
-            options[option] = value
+        LOG.debug("Original RSR file from EUMETSAT: {}".format(self.seviri_path))
 
         self.output_dir = options.get('rsr_dir', './')
 
@@ -169,19 +163,23 @@ class Seviri(object):
     def convert2wavenumber(self):
         """Convert from wavelengths to wavenumber"""
         for chname in self.rsr.keys():
-            for sat in self.rsr[chname].keys():
+            elems = [k for k in self.rsr[chname].keys()]
+            for sat in elems:
                 if sat == "wavelength":
-                    wnum = 1. / (1e-4 * self.rsr[chname][sat])  # microns to cm
+                    LOG.debug("Get the wavenumber from the wavelength: sat=%s chname=%s", sat, chname)
+                    wnum = 1. / (1e-4 * self.rsr[chname][sat][:])  # microns to cm
                     self.rsr[chname]['wavenumber'] = wnum[::-1]
-                    del self.rsr[chname][sat]
                 else:
                     if type(self.rsr[chname][sat]) is dict:
                         for name in self.rsr[chname][sat].keys():
-                            resp = self.rsr[chname][sat][name]
+                            resp = self.rsr[chname][sat][name][:]
                             self.rsr[chname][sat][name] = resp[::-1]
                     else:
-                        resp = self.rsr[chname][sat]
+                        resp = self.rsr[chname][sat][:]
                         self.rsr[chname][sat] = resp[::-1]
+
+        for chname in self.rsr.keys():
+            del self.rsr[chname]['wavelength']
 
         self.unit = 'cm-1'
 
@@ -228,7 +226,7 @@ def generate_seviri_file(seviri, platform_name):
     import h5py
 
     filename = os.path.join(seviri.output_dir,
-                            "rsr_seviri_%s%.2d.h5" % platform_name)
+                            "rsr_seviri_{0}.h5".format(platform_name))
 
     sat_name = platform_name
     with h5py.File(filename, "w") as h5f:
@@ -263,11 +261,12 @@ def generate_seviri_file(seviri, platform_name):
 
 def main():
     """Main"""
-    sevObj = Seviri()
+    sev_obj = Seviri()
 
     for satnum in [8, 9, 10, 11]:
-        generate_seviri_file(sevObj, 'Meteosat-%d' % satnum)
-        print "Meteosat-%d done..." % satnum
+        generate_seviri_file(sev_obj, 'Meteosat-{0:d}'.format(satnum))
+        print("Meteosat-{0:d} done...".format(satnum))
+
 
 if __name__ == "__main__":
     main()
