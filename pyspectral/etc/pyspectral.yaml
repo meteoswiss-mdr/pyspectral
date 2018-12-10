@@ -3,6 +3,8 @@
 #
 #rsr_dir: ~/.local/share/pyspectral/
 #rayleigh_dir: ~/.local/share/pyspectral/
+#rsr_dir: /opt/users/common/packages/pyspectral_aux_files/rsr_files/
+#rayleigh_dir: /opt/users/common/packages/pyspectral_aux_files/rayleigh_only/
 
 #tb2rad_dir: /path/to/radiance/tb/lut/data
 
@@ -26,24 +28,24 @@ seviri:
 
 Meteosat-8-seviri:
   # You can provide any file name as you wish but it has to end with ".npz":
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_meteosat9_seviri_ir3.9.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_meteosat9_seviri_ir3.9.npz
 
 Meteosat-9-seviri:
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_meteosat10_seviri_ir3.9.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_meteosat10_seviri_ir3.9.npz
 
 Meteosat-10-seviri:
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_meteosat10_seviri_ir3.9.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_meteosat10_seviri_ir3.9.npz
 
 Meteosat-11-seviri:
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_meteosat10_seviri_ir3.9.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_meteosat10_seviri_ir3.9.npz
 
 EOS-Terra-modis:
   path: /home/a000680/data/SpectralResponses/modis/terra/L1B_RSR_LUT
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_terra_modis_ir3.7.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_terra_modis_ir3.7.npz
 
 EOS-Aqua-modis:
   path: /home/a000680/data/SpectralResponses/modis/aqua
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_aqua_modis_ir3.7.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_aqua_modis_ir3.7.npz
 
 
 NOAA-20-viirs:
@@ -52,7 +54,7 @@ NOAA-20-viirs:
   # J1_VIIRS_V1_RSR_used_in_V2/J1_VIIRS_RSR_M8_Det_V1.txt
 
   rootdir: /path/to/original/jpss1/viirs/data
-  tb2rad_lut_filename: /path/to/radiance/tb/lut/data/tb2rad_lut_noaa20_viirs_ir3.7.npz
+  tb2rad_lut_filename: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_noaa20_viirs_ir3.7.npz
   
   section1:
     filename: J1_VIIRS_Detector_RSR_V2/J1_VIIRS_RSR_{bandname}_Detector_Fused_V2.txt
@@ -95,8 +97,8 @@ Suomi-NPP-viirs:
 
   rootdir: /path/to/original/snpp/viirs/data
   tb2rad_lut_filename:
-    m12: /path/to/radiance/tb/lut/data/tb2rad_lut_snpp_viirs_m12.npz
-    i4: /path/to/radiance/tb/lut/data/tb2rad_lut_snpp_viirs_i4.npz
+    m12: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_snpp_viirs_m12.npz
+    i4: /opt/users/common/packages/pyspectral_aux_files/pyspectral_tb_lut/tb2rad_lut_snpp_viirs_i4.npz
   
   section1:
     filename: GT_F1_SC_RSR_Release1.0_Best_Mbands/GT_F1_SC_RSR_Release1.0_Best_{bandname}_V2.71_ib_oob.txt
