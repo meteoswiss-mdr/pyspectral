@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013-2018 Adam.Dybbroe
+# Copyright (c) 2013-2019 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,20 +20,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""The tests package"""
+"""The tests package."""
 
+import doctest
+import os
 from pyspectral import (blackbody,
                         near_infrared_reflectance,
                         solar)
-
-from pyspectral.tests import (test_rayleigh,
-                              test_blackbody,
-                              test_reflectance,
-                              test_solarflux,
-                              test_utils,
-                              test_rad_tb_conversions,
-                              test_rsr_reader,
-                              test_atm_correction_ir)
 
 import sys
 if sys.version_info < (2, 7):
@@ -41,15 +34,12 @@ if sys.version_info < (2, 7):
 else:
     import unittest
 
-import doctest
-import os
 TRAVIS = os.environ.get("TRAVIS", False)
 APPVEYOR = os.environ.get("APPVEYOR", False)
 
 
 def suite():
-    """The global test suite.
-    """
+    """Perform the unit testing."""
     mysuite = unittest.TestSuite()
     if not TRAVIS and not APPVEYOR:
         # Test sphinx documentation pages:
@@ -62,14 +52,6 @@ def suite():
         mysuite.addTests(doctest.DocTestSuite(near_infrared_reflectance))
         mysuite.addTests(doctest.DocTestSuite(blackbody))
 
-    # Use the unittests also
-    mysuite.addTests(test_blackbody.suite())
-    mysuite.addTests(test_rad_tb_conversions.suite())
-    mysuite.addTests(test_solarflux.suite())
-    mysuite.addTests(test_reflectance.suite())
-    mysuite.addTests(test_utils.suite())
-    mysuite.addTests(test_rayleigh.suite())
-    mysuite.addTests(test_rsr_reader.suite())
     return mysuite
 
 

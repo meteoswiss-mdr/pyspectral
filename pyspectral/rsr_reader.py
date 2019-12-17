@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014-2018 Adam.Dybbroe
+# Copyright (c) 2014-2019 Adam.Dybbroe
 
 # Author(s):
 
@@ -21,43 +21,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Reading the spectral responses in the internal pyspectral hdf5 format"""
+"""Reading the spectral responses in the internal pyspectral hdf5 format."""
 
 import os
 import numpy as np
 from glob import glob
 from os.path import expanduser
-
-import logging
-LOG = logging.getLogger(__name__)
-
 from pyspectral.config import get_config
 from pyspectral.utils import WAVE_NUMBER
 from pyspectral.utils import WAVE_LENGTH
 from pyspectral.utils import (INSTRUMENTS, download_rsr)
 from pyspectral.utils import (RSR_DATA_VERSION_FILENAME, RSR_DATA_VERSION)
 
+import logging
+LOG = logging.getLogger(__name__)
 
-class RelativeSpectralResponse(object):
-    """Container for the relative spectral response functions for various
-    satellite imagers
-    """
 
-    def __init__(self, platform_name=None, instrument=None, **kwargs):
-        """Create the instance either from platform name and instrument or from
-        filename and load the data"""
-        self.platform_name = platform_name
-        self.instrument = instrument
-        self.filename = None
-        if not self.instrument or not self.platform_name:
-            if 'filename' in kwargs:
-                self.filename = kwargs['filename']
-            else:
-                raise AttributeError(
-                    "platform name and sensor or filename must be specified")
-        else:
-            self._check_instrument()
+class RSRDataBaseClass(object):
+    """Data container for the Relative Spectral Responses for all (supported) satellite sensors."""
 
+    def __init__(self):
+        """Initialize the class instance.
+
+        Create the instance either from platform name and instrument or from
+        filename and load the data.
+
+        """
         self.rsr = {}
         self.description = "Unknown"
         self.band_names = None
@@ -75,6 +64,46 @@ class RelativeSpectralResponse(object):
 
         if self._get_rsr_data_version() == RSR_DATA_VERSION:
             self._rsr_data_version_uptodate = True
+
+    def _get_rsr_data_version(self):
+        """Check the version of the RSR data from the version file in the RSR directory."""
+        rsr_data_version_path = os.path.join(self.rsr_dir, RSR_DATA_VERSION_FILENAME)
+        if not os.path.exists(rsr_data_version_path):
+            return "v0.0.0"
+
+        with open(rsr_data_version_path, 'r') as fpt:
+            # Get the version from the file
+            return fpt.readline().strip()
+
+    @property
+    def rsr_data_version_uptodate(self):
+        """Check whether RSR data are up to date."""
+        return self._rsr_data_version_uptodate
+
+
+class RelativeSpectralResponse(RSRDataBaseClass):
+    """Container for the relative spectral response functions for various satellite imagers."""
+
+    def __init__(self, platform_name=None, instrument=None, **kwargs):
+        """Initialize the class instance.
+
+        Create the instance either from platform name and instrument or from
+        filename and load the data.
+
+        """
+        super(RelativeSpectralResponse, self).__init__()
+
+        self.platform_name = platform_name
+        self.instrument = instrument
+        self.filename = None
+        if not self.instrument or not self.platform_name:
+            if 'filename' in kwargs:
+                self.filename = kwargs['filename']
+            else:
+                raise AttributeError(
+                    "platform name and sensor or filename must be specified")
+        else:
+            self._check_instrument()
 
         if not self.filename:
             self._get_filename()
@@ -95,22 +124,8 @@ class RelativeSpectralResponse(object):
         LOG.debug('Filename: %s', str(self.filename))
         self.load()
 
-    def _get_rsr_data_version(self):
-        """Check the version of the RSR data from the version file in the RSR
-           directory
-
-        """
-
-        rsr_data_version_path = os.path.join(self.rsr_dir, RSR_DATA_VERSION_FILENAME)
-        if not os.path.exists(rsr_data_version_path):
-            return "v0.0.0"
-
-        with open(rsr_data_version_path, 'r') as fpt:
-            # Get the version from the file
-            return fpt.readline().strip()
-
     def _check_instrument(self):
-        """Check and try fix instrument name if needed"""
+        """Check and try fix instrument name if needed."""
         instr = INSTRUMENTS.get(self.platform_name, self.instrument.lower())
         if instr != self.instrument.lower():
             self.instrument = instr
@@ -120,10 +135,7 @@ class RelativeSpectralResponse(object):
         self.instrument = self.instrument.lower().replace('/', '')
 
     def _get_filename(self):
-        """Get the rsr filname from platform and instrument names, and download if not
-           available.
-
-        """
+        """Get the rsr filname from platform and instrument names, and download if not available."""
         self.filename = expanduser(
             os.path.join(self.rsr_dir, 'rsr_{0}_{1}.h5'.format(self.instrument,
                                                                self.platform_name)))
@@ -149,16 +161,23 @@ class RelativeSpectralResponse(object):
                 download_rsr()
 
     def load(self):
-        """Read the internally formatet hdf5 relative spectral response data"""
+        """Read the internally formatet hdf5 relative spectral response data."""
         import h5py
 
         no_detectors_message = False
         with h5py.File(self.filename, 'r') as h5f:
-            self.band_names = [b.decode('utf-8') for b in h5f.attrs['band_names'].tolist()]
-            self.description = h5f.attrs['description'].decode('utf-8')
+            self.band_names = h5f.attrs['band_names'].tolist()
+            self.description = h5f.attrs['description']
+            if not isinstance(self.band_names[0], str):
+                # byte array in python 3
+                self.band_names = [x.decode('utf-8') for x in self.band_names]
+                self.description = self.description.decode('utf-8')
+
             if not self.platform_name:
                 try:
-                    self.platform_name = h5f.attrs['platform_name'].decode('utf-8')
+                    self.platform_name = h5f.attrs['platform_name']
+                    if not isinstance(self.platform_name, str):
+                        self.platform_name = self.platform_name.decode('utf-8')
                 except KeyError:
                     LOG.warning("No platform_name in HDF5 file")
                     try:
@@ -172,6 +191,8 @@ class RelativeSpectralResponse(object):
             if not self.instrument:
                 try:
                     self.instrument = h5f.attrs['sensor'].decode('utf-8')
+                    if not isinstance(self.instrument, str):
+                        self.instrument = self.instrument.decode('utf-8')
                 except KeyError:
                     LOG.warning("No sensor name specified in HDF5 file")
                     self.instrument = INSTRUMENTS.get(self.platform_name)
@@ -217,9 +238,7 @@ class RelativeSpectralResponse(object):
                         'central_wavelength'] = central_wvl
 
     def integral(self, bandname):
-        """Calculate the integral of the spectral response function for each
-        detector.
-        """
+        """Calculate the integral of the spectral response function for each detector."""
         intg = {}
         for det in self.rsr[bandname].keys():
             wvl = self.rsr[bandname][det]['wavelength']
@@ -228,8 +247,7 @@ class RelativeSpectralResponse(object):
         return intg
 
     def convert(self):
-        """Convert spectral response functions from wavelength to wavenumber"""
-
+        """Convert spectral response functions from wavelength to wavenumber."""
         from pyspectral.utils import (convert2wavenumber, get_central_wave)
         if self._wavespace == WAVE_LENGTH:
             rsr, info = convert2wavenumber(self.rsr)
@@ -252,8 +270,23 @@ class RelativeSpectralResponse(object):
             raise NotImplementedError(errmsg)
 
 
+def check_and_download(**kwargs):
+    """Do a check for the version and attempt downloading only if needed."""
+    dry_run = kwargs.get('dry_run', False)
+    dest_dir = kwargs.get('dest_dir', None)
+
+    rsr = RSRDataBaseClass()
+    if rsr.rsr_data_version_uptodate:
+        LOG.info("RSR data already the latest!")
+    else:
+        if dest_dir:
+            download_rsr(dest_dir=dest_dir, dry_run=dry_run)
+        else:
+            download_rsr(dry_run=dry_run)
+
+
 def main():
-    """Main"""
+    """Main."""
     modis = RelativeSpectralResponse('EOS-Terra', 'modis')
     del(modis)
 

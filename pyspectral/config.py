@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2017, 2018 Adam.Dybbroe
+# Copyright (c) 2017, 2018, 2019 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,16 +20,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""PySpectral configuration directory and file handling
-"""
+"""PySpectral configuration directory and file handling."""
 
 import logging
 import os
 from os.path import expanduser
 from appdirs import AppDirs
 import yaml
-from collections import Mapping
+try:
+    # python 3.3+
+    from collections.abc import Mapping
+except ImportError:
+    # deprecated (above can't be done in 2.7)
+    from collections import Mapping
 import pkg_resources
+
+try:
+    from yaml import UnsafeLoader
+except ImportError:
+    from yaml import Loader as UnsafeLoader
 
 
 LOG = logging.getLogger(__name__)
@@ -47,7 +56,7 @@ if CONFIG_FILE is not None and (not os.path.exists(CONFIG_FILE) or
 
 
 def recursive_dict_update(d, u):
-    """Recursive dictionary update using
+    """Recursive dictionary update.
 
     Copied from:
 
@@ -64,7 +73,7 @@ def recursive_dict_update(d, u):
 
 
 def get_config():
-    """Get the configuration from file"""
+    """Get the configuration from file."""
     if CONFIG_FILE is not None:
         configfile = CONFIG_FILE
     else:
@@ -72,7 +81,7 @@ def get_config():
 
     config = {}
     with open(configfile, 'r') as fp_:
-        config = recursive_dict_update(config, yaml.load(fp_))
+        config = recursive_dict_update(config, yaml.load(fp_, Loader=UnsafeLoader))
 
     app_dirs = AppDirs('pyspectral', 'pytroll')
     user_datadir = app_dirs.user_data_dir

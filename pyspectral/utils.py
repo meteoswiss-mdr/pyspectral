@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014-2018 Pytroll
+# Copyright (c) 2014-2019 Pytroll
 
 # Author(s):
 
@@ -21,7 +21,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Utility functions"""
+"""Utility functions."""
 
 import os
 import logging
@@ -78,9 +78,19 @@ BANDNAMES['generic'] = {'VIS006': 'VIS0.6',
                         'C15': 'ch15',
                         'C16': 'ch16',
                         }
+# handle arbitrary channel numbers
+for chan_num in range(1, 37):
+    BANDNAMES['generic'][str(chan_num)] = 'ch{:d}'.format(chan_num)
 
-BANDNAMES['avhrr-3'] = {'3b': 'ch3b',
-                        '3a': 'ch3a'}
+# MODIS RSR files were made before 'chX' became standard in pyspectral
+BANDNAMES['modis'] = {str(chan_num): str(chan_num) for chan_num in range(1, 37)}
+
+BANDNAMES['avhrr-3'] = {'1': 'ch1',
+                        '2': 'ch2',
+                        '3b': 'ch3b',
+                        '3a': 'ch3a',
+                        '4': 'ch4',
+                        '5': 'ch5'}
 
 BANDNAMES['ahi'] = {'B01': 'ch1',
                     'B02': 'ch2',
@@ -98,6 +108,24 @@ BANDNAMES['ahi'] = {'B01': 'ch1',
                     'B14': 'ch14',
                     'B15': 'ch15',
                     'B16': 'ch16'
+                    }
+
+BANDNAMES['ami'] = {'VI004': 'ch1',
+                    'VI005': 'ch2',
+                    'VI006': 'ch3',
+                    'VI008': 'ch4',
+                    'NR013': 'ch5',
+                    'NR016': 'ch6',
+                    'SW038': 'ch7',
+                    'WV063': 'ch8',
+                    'WV069': 'ch9',
+                    'WV073': 'ch10',
+                    'IR087': 'ch11',
+                    'IR096': 'ch12',
+                    'IR105': 'ch13',
+                    'IR112': 'ch14',
+                    'IR123': 'ch15',
+                    'IR133': 'ch16'
                     }
 
 INSTRUMENTS = {'NOAA-19': 'avhrr/3',
@@ -120,12 +148,17 @@ INSTRUMENTS = {'NOAA-19': 'avhrr/3',
                'Suomi-NPP': 'viirs',
                'NOAA-20': 'viirs',
                'FY-3D': 'mersi-2',
-               'Feng-Yun 3D': 'mersi-2'
+               'FY-3C': 'virr',
+               'FY-3B': 'virr',
+               'Feng-Yun 3D': 'mersi-2',
+               'FY-4A': 'agri',
+               'GEO-KOMPSAT-2A': 'ami'
                }
 
-HTTP_PYSPECTRAL_RSR = "https://zenodo.org/record/1491277/files/pyspectral_rsr_data.tgz"
+
+HTTP_PYSPECTRAL_RSR = "https://zenodo.org/record/3461164/files/pyspectral_rsr_data.tgz"
 RSR_DATA_VERSION_FILENAME = "PYSPECTRAL_RSR_VERSION"
-RSR_DATA_VERSION = "v1.0.3"
+RSR_DATA_VERSION = "v1.0.10"
 
 ATM_CORRECTION_LUT_VERSION = {}
 ATM_CORRECTION_LUT_VERSION['antarctic_aerosol'] = {'version': 'v1.0.1',
@@ -190,7 +223,8 @@ TB2RAD_DIR = CONF.get('tb2rad_dir', tempfile.gettempdir())
 
 
 def convert2wavenumber(rsr):
-    """
+    """Convert Spectral Responses from wavelength to wavenumber space.
+
     Take rsr data set with all channels and detectors for an instrument
     each with a set of wavelengths and normalised responses and
     convert to wavenumbers and responses
@@ -201,7 +235,6 @@ def convert2wavenumber(rsr):
       :info: Dictionary with scale (to go convert to SI units) and unit
 
     """
-
     retv = {}
     for chname in rsr.keys():  # Go through bands/channels
         retv[chname] = {}
@@ -235,13 +268,14 @@ def convert2wavenumber(rsr):
 
 
 def get_central_wave(wav, resp, weight=1.0):
-    """Calculate the central wavelength or the central wavenumber, depending on
+    """Calculate the central wavelength or the central wavenumber.
+
+    Calculate the central wavelength or the central wavenumber, depending on
     which parameters is input.  On default the weighting funcion is
     f(lambda)=1.0, but it is possible to add a custom weight, e.g. f(lambda) =
     1./lambda**4 for Rayleigh scattering calculations
 
     """
-
     # info: {'unit': unit, 'si_scale': si_scale}
     # To get the wavelenght/wavenumber in SI units (m or m-1):
     # wav = wav * info['si_scale']
@@ -252,7 +286,6 @@ def get_central_wave(wav, resp, weight=1.0):
     # if info['unit'].find('-1') > 0:
     # Wavenumber:
     #     res *=
-
     return np.trapz(resp * wav * weight, wav) / np.trapz(resp * weight, wav)
 
 
@@ -260,7 +293,6 @@ def get_bandname_from_wavelength(sensor, wavelength, rsr, epsilon=0.1, multiple_
     """Get the bandname from h5 rsr provided the approximate wavelength."""
     # channel_list = [channel for channel in rsr.rsr if abs(
     # rsr.rsr[channel]['det-1']['central_wavelength'] - wavelength) < epsilon]
-
     chdist_min = 2.0
     chfound = []
     for channel in rsr:
@@ -283,10 +315,9 @@ def get_bandname_from_wavelength(sensor, wavelength, rsr, epsilon=0.1, multiple_
 
 
 def sort_data(x_vals, y_vals):
-    """Sort the data so that x is monotonically increasing and contains
-    no duplicates.
-    """
+    """Sort the data so that x is monotonically increasing and contains no duplicates."""
     # Sort data
+    # (This is needed in particular for EOS-Terra responses, as there are duplicates)
     idxs = np.argsort(x_vals)
     x_vals = x_vals[idxs]
     y_vals = y_vals[idxs]
@@ -294,9 +325,9 @@ def sort_data(x_vals, y_vals):
     # De-duplicate data
     mask = np.r_[True, (np.diff(x_vals) > 0)]
     if not mask.all():
-        # what is this for?
         numof_duplicates = np.repeat(mask, np.equal(mask, False)).shape[0]
-        del numof_duplicates
+        LOG.debug("Number of duplicates in the response function: %d - removing them",
+                  numof_duplicates)
     x_vals = x_vals[mask]
     y_vals = y_vals[mask]
 
@@ -341,12 +372,12 @@ def convert2hdf5(ClassIn, platform_name, bandnames, scale=1e-06):
 
 
 def download_rsr(**kwargs):
-    """Download the pre-compiled hdf5 formatet relative spectral response functions
+    """Download the relative spectral response functions.
+
+    Download the pre-compiled hdf5 formatet relative spectral response functions
     from the internet
 
     """
-
-    #
     import tarfile
     import requests
     TQDM_LOADED = True
@@ -384,7 +415,6 @@ def download_rsr(**kwargs):
 
 def download_luts(**kwargs):
     """Download the luts from internet."""
-    #
     import tarfile
     import requests
     TQDM_LOADED = True
@@ -403,7 +433,7 @@ def download_luts(**kwargs):
     else:
         aerosol_types = HTTPS_RAYLEIGH_LUTS.keys()
 
-    chunk_size = 10124
+    chunk_size = 1024*1024  # 1 MB
 
     for subname in aerosol_types:
 
@@ -431,7 +461,7 @@ def download_luts(**kwargs):
         if TQDM_LOADED:
             with open(filename, "wb") as handle:
                 for data in tqdm(iterable=response.iter_content(chunk_size=chunk_size),
-                                 total=(total_size / chunk_size), unit='kB'):
+                                 total=(int(total_size / chunk_size + 0.5)), unit='kB'):
                     handle.write(data)
         else:
             with open(filename, "wb") as handle:
@@ -445,8 +475,7 @@ def download_luts(**kwargs):
 
 
 def debug_on():
-    """Turn debugging logging on.
-    """
+    """Turn debugging logging on."""
     logging_on(logging.DEBUG)
 
 
@@ -454,8 +483,7 @@ _is_logging_on = False
 
 
 def logging_on(level=logging.WARNING):
-    """Turn logging on.
-    """
+    """Turn logging on."""
     global _is_logging_on
 
     if not _is_logging_on:
@@ -474,25 +502,20 @@ def logging_on(level=logging.WARNING):
 
 
 class NullHandler(logging.Handler):
-
-    """Empty handler"""
+    """Empty handler."""
 
     def emit(self, record):
-        """Record a message.
-        """
+        """Record a message."""
         pass
 
 
 def logging_off():
-    """Turn logging off.
-    """
+    """Turn logging off."""
     logging.getLogger('').handlers = [NullHandler()]
 
 
 def get_logger(name):
-    """Return logger with null handle
-    """
-
+    """Return logger with null handle."""
     log = logging.getLogger(name)
     if not log.handlers:
         log.addHandler(NullHandler())

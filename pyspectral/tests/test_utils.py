@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014, 2017, 2018 Adam.Dybbroe
+# Copyright (c) 2014, 2017, 2018, 2019 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unittests for the utils library"""
+"""Do the unit testing for the utils library."""
 
 from pyspectral import utils
 
@@ -73,10 +73,10 @@ RESULT_RSR['20']['det-1']['response'] = np.array([
 
 
 class RsrTestData(object):
-
-    """Container for the RSR test datasets"""
+    """Container for the RSR test datasets."""
 
     def __init__(self):
+        """Initialize the class instance."""
         self.rsr = {}
         channel_names = ['ch12', 'ch13', 'ch10', 'ch11', 'ch16', 'ch14',
                          'ch15', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6',
@@ -107,16 +107,14 @@ class RsrTestData(object):
 
 
 class TestUtils(unittest.TestCase):
-
-    """Unit testing the utils library functions"""
+    """Unit testing the utils library functions."""
 
     def setUp(self):
-        """Set up"""
+        """Set up."""
         self.rsr = RsrTestData()
 
     def test_convert2wavenumber(self):
-        """Testing the conversion of rsr from wavelength to wavenumber
-        """
+        """Testing the conversion of rsr from wavelength to wavenumber."""
         newrsr, info = utils.convert2wavenumber(TEST_RSR)
         unit = info['unit']
         self.assertEqual(unit, 'cm-1')
@@ -127,11 +125,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.allclose(wvn_res, wvn))
 
     def test_get_bandname_from_wavelength(self):
-        """Test that it is possible to get the right bandname provided the wavelength
-        in micro meters
-
-        """
-
+        """Test the right bandname is found provided the wavelength in micro meters."""
         x = utils.get_bandname_from_wavelength('abi', 0.4, self.rsr.rsr)
         self.assertEqual(x, 'ch1')
         with self.assertRaises(AttributeError):
@@ -146,21 +140,9 @@ class TestUtils(unittest.TestCase):
         x = utils.get_bandname_from_wavelength('abi', 1.0, self.rsr.rsr)
         self.assertEqual(x, None)
 
+        # uses generic channel mapping where '20' -> 'ch20'
         bandname = utils.get_bandname_from_wavelength('abi', 3.7, TEST_RSR)
-        self.assertEqual(bandname, '20')
+        self.assertEqual(bandname, 'ch20')
 
         bandname = utils.get_bandname_from_wavelength('abi', 3.0, TEST_RSR)
         self.assertIsNone(bandname)
-
-    def tearDown(self):
-        """Clean up"""
-        pass
-
-
-def suite():
-    """The suite for test_utils."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestUtils))
-
-    return mysuite

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013-2018 Pytroll
+# Copyright (c) 2013-2019 Pytroll
 
 # Author(s):
 
@@ -21,9 +21,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from setuptools import setup
+from setuptools import setup, find_packages
 import os.path
-import versioneer
+
+
+try:
+    # HACK: https://github.com/pypa/setuptools_scm/issues/190#issuecomment-351181286
+    # Stop setuptools_scm from including all repository files
+    import setuptools_scm.integration
+    setuptools_scm.integration.find_files = lambda _: []
+except ImportError:
+    pass
+
 
 description = ('Reading and manipulaing satellite sensor spectral responses and the '
                'solar spectrum, to perfom various corrections to VIS and NIR band data')
@@ -50,15 +59,9 @@ if sys.version < '3.0':
     except ImportError:
         pass
 
-# if sys.version >= '3.6':
-#     # h5pickle 0.3 only supports 3.6+
-#     test_requires.append('h5pickle')
-#     dask_extra.append('h5pickle')
+NAME = 'pyspectral'
 
-
-setup(name='pyspectral',
-      version=versioneer.get_version(),
-      cmdclass=versioneer.get_cmdclass(),
+setup(name=NAME,
       description=description,
       author='Adam Dybbroe',
       author_email='adam.dybbroe@smhi.se',
@@ -73,8 +76,7 @@ setup(name='pyspectral',
       long_description=long_description,
       license='GPLv3',
 
-      packages=['pyspectral'],
-
+      packages=find_packages(),
       include_package_data=True,
       package_data={
           # If any package contains *.txt files, include them:
@@ -102,5 +104,6 @@ setup(name='pyspectral',
       test_suite='pyspectral.tests.suite',
       tests_require=test_requires,
       python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
-      zip_safe=False
+      zip_safe=False,
+      use_scm_version=True
       )

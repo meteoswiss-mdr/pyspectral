@@ -18,13 +18,15 @@ Now, you can work with the data as you wish, make some simple plot for instance:
   >>> [str(b) for b in olci.band_names]
   ['Oa01', 'Oa02', 'Oa03', 'Oa04', 'Oa05', 'Oa06', 'Oa07', 'Oa08', 'Oa09', 'Oa10', 'Oa11', 'Oa12', 'Oa13', 'Oa14', 'Oa15', 'Oa16', 'Oa17', 'Oa18', 'Oa19', 'Oa20', 'Oa21']
   >>> print("Central wavelength = {wvl:7.6f}".format(wvl=olci.rsr['Oa01']['det-1']['central_wavelength']))
-  Central wavelength = 0.400123
+  Central wavelength = 0.400303
   >>> import matplotlib.pyplot as plt
   >>> dummy = plt.figure(figsize=(10, 5))
   >>> import numpy as np
-  >>> resp = np.ma.masked_less_equal(olci.rsr['Oa01']['det-1']['response'], 0.015)
-  >>> wvl = np.ma.masked_array(olci.rsr['Oa01']['det-1']['wavelength'], resp.mask)
-  >>> dummy = plt.plot(wvl.compressed(), resp.compressed())
+  >>> rsr = olci.rsr['Oa01']['det-1']['response']
+  >>> resp = np.where(rsr < 0.015, np.nan, rsr)
+  >>> wl_ = olci.rsr['Oa01']['det-1']['wavelength']
+  >>> wvl = np.where(np.isnan(resp), np.nan, wl_)
+  >>> dummy = plt.plot(wvl, resp)
   >>> plt.show() # doctest: +SKIP
 
   .. image:: _static/olci_ch1.png

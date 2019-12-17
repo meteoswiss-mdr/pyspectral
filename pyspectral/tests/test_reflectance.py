@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013-2018 Adam.Dybbroe
+# Copyright (c) 2013-2019 Adam.Dybbroe
 
 # Author(s):
 
@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit testing the 3.7 micron reflectance calculations"""
+"""Unit testing the 3.7 micron reflectance calculations."""
 
 from pyspectral.near_infrared_reflectance import Calculator
 import numpy as np
@@ -100,17 +100,10 @@ TEST_RSR_WN['20']['det-1']['response'] = RESP
 
 
 class TestReflectance(unittest.TestCase):
-
-    """Unit testing the reflectance calculations"""
-
-    def setUp(self):
-        """Set up"""
-        pass
+    """Unit testing the reflectance calculations."""
 
     def test_rsr_integral(self):
-        """Test calculating the integral of the relative spectral response
-        function. 
-        """
+        """Test calculating the integral of the relative spectral response function."""
         with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
             instance = mymock.return_value
             instance.rsr = TEST_RSR
@@ -120,7 +113,7 @@ class TestReflectance(unittest.TestCase):
             refl37 = Calculator('EOS-Aqua', 'modis', '20')
 
         expected = 1.8563451e-07  # unit = 'm' (meter)
-        self.assertAlmostEqual(refl37.rsr_integral, expected)
+        np.testing.assert_allclose(refl37.rsr_integral, expected)
 
         with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
             instance = mymock.return_value
@@ -132,23 +125,26 @@ class TestReflectance(unittest.TestCase):
 
         expected = 13000.385  # SI units = 'm-1' (1/meter)
         res = refl37.rsr_integral
-        self.assertAlmostEqual(res / expected, 1.0, 6)
+        np.testing.assert_allclose(res / expected, 1.0, 6)
 
     def test_reflectance(self):
-        """Test the derivation of the reflective part of a 3.7 micron band"""
-
+        """Test the derivation of the reflective part of a 3.7 micron band."""
         with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
             instance = mymock.return_value
-            instance.rsr = TEST_RSR
+            # VIIRS doesn't have a channel '20' like MODIS so the generic
+            # mapping this test will end up using will find 'ch20' for VIIRS
+            viirs_rsr = {'ch20': TEST_RSR['20'], '99': TEST_RSR['99']}
+            instance.rsr = viirs_rsr
             instance.unit = '1e-6 m'
             instance.si_scale = 1e-6
 
             with self.assertRaises(NotImplementedError):
                 dummy = Calculator('Suomi-NPP', 'viirs', 10.8)
+                del dummy
 
             refl37 = Calculator('Suomi-NPP', 'viirs', 3.7)
             self.assertEqual(refl37.bandwavelength, 3.7)
-            self.assertEqual(refl37.bandname, '20')
+            self.assertEqual(refl37.bandname, 'ch20')
 
         with patch('pyspectral.radiance_tb_conversion.RelativeSpectralResponse') as mymock:
             instance = mymock.return_value
@@ -162,38 +158,41 @@ class TestReflectance(unittest.TestCase):
         tb3 = np.array([290.])
         tb4 = np.array([282.])
         refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
-        self.assertAlmostEqual(refl.data[0], 0.251245010648, 6)
+        np.testing.assert_allclose(refl[0], 0.251245010648, 6)
 
         tb3x = refl37.emissive_part_3x()
-        self.assertAlmostEqual(tb3x, 276.213054, 6)
+        np.testing.assert_allclose(tb3x, 276.213054, 6)
 
         sunz = np.array([80.])
         tb3 = np.array([295.])
         tb4 = np.array([282.])
         refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
-        self.assertAlmostEqual(refl.data[0], 0.452497961, 6)
+        np.testing.assert_allclose(refl[0], 0.452497961, 6)
 
         tb3x = refl37.emissive_part_3x()
-        self.assertAlmostEqual(tb3x, 270.077268, 6)
+        np.testing.assert_allclose(tb3x, 270.077268, 6)
 
         sunz = np.array([50.])
         tb3 = np.array([300.])
         tb4 = np.array([285.])
         refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
-        self.assertAlmostEqual(refl.data[0], 0.1189217, 6)
+        np.testing.assert_allclose(refl[0], 0.1189217, 6)
 
         tb3x = refl37.emissive_part_3x()
-        self.assertAlmostEqual(tb3x, 282.455426, 6)
+        np.testing.assert_allclose(tb3x, 282.455426, 6)
 
-    def tearDown(self):
-        """Clean up"""
-        pass
+        sunz = np.array([50.])
+        tb3 = np.ma.masked_array([300.], mask=False)
+        tb4 = np.ma.masked_array([285.], mask=False)
+        refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
+        self.assertTrue(hasattr(refl, 'mask'))
 
-
-def suite():
-    """The suite for test_reflectance."""
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestReflectance))
-
-    return mysuite
+        try:
+            import dask.array as da
+            sunz = da.from_array([50.], chunks=10)
+            tb3 = da.from_array([300.], chunks=10)
+            tb4 = da.from_array([285.], chunks=10)
+            refl = refl37.reflectance_from_tbs(sunz, tb3, tb4)
+            self.assertTrue(hasattr(refl, 'compute'))
+        except ImportError:
+            pass

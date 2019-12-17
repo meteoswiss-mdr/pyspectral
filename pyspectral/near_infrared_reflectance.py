@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014-2018 Adam.Dybbroe
+# Copyright (c) 2014-2019 Adam.Dybbroe
 
 # Author(s):
 
@@ -21,13 +21,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Derive the Near-Infrared reflectance of a given band in the solar and
+"""
+Derive NIR reflectances of a a band in the 3-4 micron window region.
+
+Derive the Near-Infrared reflectance of a given band in the solar and
 thermal range (usually the 3.7-3.9 micron band) using a thermal atmospheric
 window channel (usually around 11-12 microns).
 """
 
 import os
 import numpy as np
+try:
+    from dask.array import where, logical_or, asanyarray, array
+except ImportError:
+    from numpy import where, logical_or, asanyarray, array
+
 from pyspectral.solar import (SolarIrradianceSpectrum,
                               TOTAL_IRRADIANCE_SPECTRUM_2000ASTM)
 from pyspectral.utils import BANDNAMES, get_bandname_from_wavelength
@@ -45,8 +53,8 @@ TB_MAX = 360.
 
 
 class Calculator(RadTbConverter):
-
-    """A thermal near-infrared (~3.7 micron) band reflectance calculator.
+    """
+    A thermal near-infrared (~3.7 micron) band reflectance calculator.
 
     Given the relative spectral response of the NIR band, the solar zenith
     angle, and the brightness temperatures of the NIR and the Thermal bands,
@@ -58,6 +66,7 @@ class Calculator(RadTbConverter):
     """
 
     def __init__(self, platform_name, instrument, band, **kwargs):
+        """Initialize the Class instance."""
         super(Calculator, self).__init__(platform_name, instrument, band, **kwargs)
 
         from numbers import Number
@@ -133,13 +142,15 @@ class Calculator(RadTbConverter):
             LOG.info("File was there and has been read!")
 
     def derive_rad39_corr(self, bt11, bt13, method='rosenfeld'):
-        """Derive the 3.9 radiance correction factor to account for the
+        """Derive the CO2 correction to be applied to the 3.9 channel.
+
+        Derive the 3.9 radiance correction factor to account for the
         attenuation of the emitted 3.9 radiance by CO2
         absorption. Requires the 11 micron window band and the 13.4
         CO2 absorption band, as e.g. available on SEVIRI. Currently
         only supports the Rosenfeld method
-        """
 
+        """
         if method != 'rosenfeld':
             raise AttributeError("Only CO2 correction for SEVIRI using "
                                  "the Rosenfeld equation is supported!")
@@ -148,9 +159,7 @@ class Calculator(RadTbConverter):
         self._rad3x_correction = (bt11 - 0.25 * (bt11 - bt13)) ** 4 / bt11 ** 4
 
     def _get_solarflux(self):
-        """Derive the in-band solar flux from rsr over the Near IR band (3.7
-        or 3.9 microns)
-        """
+        """Derive the in-band solar flux from rsr over the Near IR band (3.7 or 3.9 microns)."""
         solar_spectrum = \
             SolarIrradianceSpectrum(TOTAL_IRRADIANCE_SPECTRUM_2000ASTM,
                                     dlambda=0.0005,
@@ -158,7 +167,7 @@ class Calculator(RadTbConverter):
         self.solar_flux = solar_spectrum.inband_solarflux(self.rsr[self.bandname])
 
     def emissive_part_3x(self, tb=True):
-        """Get the emissive part of the 3.x band"""
+        """Get the emissive part of the 3.x band."""
         try:
             # Emissive part:
             self._e3x = self._rad3x_t11 * (1 - self._r3x)
@@ -177,7 +186,8 @@ class Calculator(RadTbConverter):
             return self._e3x
 
     def reflectance_from_tbs(self, sun_zenith, tb_near_ir, tb_thermal, **kwargs):
-        """
+        """Derive reflectances from Tb's in the 3.x band.
+
         The relfectance calculated is without units and should be between 0 and 1.
 
         Inputs:
@@ -195,15 +205,25 @@ class Calculator(RadTbConverter):
                      absorption correction will be applied.
 
         """
-        if np.isscalar(tb_near_ir):
-            tb_nir = np.array([tb_near_ir, ])
+        # Check for dask arrays
+        if hasattr(tb_near_ir, 'compute') or hasattr(tb_thermal, 'compute'):
+            compute = False
         else:
-            tb_nir = np.array(tb_near_ir)
+            compute = True
+        if hasattr(tb_near_ir, 'mask') or hasattr(tb_thermal, 'mask'):
+            is_masked = True
+        else:
+            is_masked = False
+
+        if np.isscalar(tb_near_ir):
+            tb_nir = array([tb_near_ir, ])
+        else:
+            tb_nir = asanyarray(tb_near_ir)
 
         if np.isscalar(tb_thermal):
-            tb_therm = np.array([tb_thermal, ])
+            tb_therm = array([tb_thermal, ])
         else:
-            tb_therm = np.array(tb_thermal)
+            tb_therm = asanyarray(tb_thermal)
 
         if tb_therm.shape != tb_nir.shape:
             errmsg = 'Dimensions do not match! {0} and {1}'.format(
@@ -219,9 +239,9 @@ class Calculator(RadTbConverter):
         else:
             co2corr = True
             if np.isscalar(tb_ir_co2):
-                tbco2 = np.array([tb_ir_co2, ])
+                tbco2 = array([tb_ir_co2, ])
             else:
-                tbco2 = np.array(tb_ir_co2)
+                tbco2 = asanyarray(tb_ir_co2)
 
         if not self.rsr:
             raise NotImplementedError("Reflectance calculations without "
@@ -239,9 +259,8 @@ class Calculator(RadTbConverter):
         if l_nir.ravel().shape[0] < 10:
             LOG.info('l_nir = %s', str(l_nir))
 
-        sunz = np.ma.masked_outside(sun_zenith, 0.0, 88.0)
-        sunzmask = sunz.mask
-        sunz = sunz.filled(88.)
+        sunzmask = (sun_zenith < 0.0) | (sun_zenith > 88.0)
+        sunz = sun_zenith.clip(0, 88.0)
 
         mu0 = np.cos(np.deg2rad(sunz))
         # mu0 = np.where(np.less(mu0, 0.1), 0.1, mu0)
@@ -256,18 +275,24 @@ class Calculator(RadTbConverter):
         else:
             self._rad3x_correction = 1.0
 
-        nomin = l_nir - thermal_emiss_one * self._rad3x_correction
-        denom = self._solar_radiance - thermal_emiss_one * self._rad3x_correction
+        corrected_thermal_emiss_one = thermal_emiss_one * self._rad3x_correction
+        nomin = l_nir - corrected_thermal_emiss_one
+        denom = self._solar_radiance - corrected_thermal_emiss_one
         data = nomin / denom
-        mask = (self._solar_radiance - thermal_emiss_one *
-                self._rad3x_correction) < EPSILON
+        mask = denom < EPSILON
 
-        np.logical_or(sunzmask, mask, out=mask)
-        np.logical_or(mask, np.isnan(tb_nir), out=mask)
+        logical_or(sunzmask, mask, out=mask)
+        logical_or(mask, np.isnan(tb_nir), out=mask)
 
-        self._r3x = np.ma.masked_where(mask, data)
+        self._r3x = where(mask, np.nan, data)
 
         # Reflectances should be between 0 and 1, but values above 1 is
         # perfectly possible and okay! (Multiply by 100 to get reflectances
         # in percent)
-        return self._r3x
+        if hasattr(self._r3x, 'compute') and compute:
+            res = self._r3x.compute()
+        else:
+            res = self._r3x
+        if is_masked:
+            res = np.ma.masked_invalid(res)
+        return res

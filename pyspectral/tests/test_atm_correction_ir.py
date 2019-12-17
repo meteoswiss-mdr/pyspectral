@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2017 Adam.Dybbroe
+# Copyright (c) 2017 - 2019 Pytroll
 
 # Author(s):
 
-#   Adam.Dybbroe <a000680@c20671.ad.smhi.se>
+#   Adam.Dybbroe <adam.dybbroe@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,25 +20,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit tests of the atmospherical correction in the ir spectral range
-"""
+"""Unit tests of the atmospherical correction in the ir spectral range."""
 
 
+import numpy as np
+from pyspectral.atm_correction_ir import AtmosphericalCorrection
 import sys
 if sys.version_info < (2, 7):
     import unittest2 as unittest
 else:
     import unittest
-
-import numpy as np
-from pyspectral.atm_correction_ir import AtmosphericalCorrection
-#from mock import patch
-
-from pyspectral.tests.unittest_helpers import assertNumpyArraysEqual
-
-# Mock some modules, so we don't need them for tests.
-
-#sys.modules['pyresample'] = MagicMock()
 
 SATZ = np.ma.array([[48.03,  48.03002,  48.03004,  48.03006,  48.03008,  48.0301,
                      48.03012,  48.03014,  48.03016,  48.03018],
@@ -125,30 +116,10 @@ RES = np.ma.array([[286.03159412,  286.03162417,  286.03165421,  286.03168426,
 
 
 class TestAtmCorrection(unittest.TestCase):
-
-    """Class for testing pyspectral.atm_correction_ir"""
-
-    def setUp(self):
-        """Setup the test"""
-        pass
+    """Class for testing pyspectral.atm_correction_ir."""
 
     def test_get_correction(self):
-        """Test getting the atm correction"""
-
+        """Test getting the atm correction."""
         this = AtmosphericalCorrection('EOS-Terra', 'modis')
         atm_corr = this.get_correction(SATZ, None, TBS)
-        assertNumpyArraysEqual(TBS, atm_corr)
-
-    def tearDown(self):
-        """Clean up"""
-        pass
-
-
-def suite():
-    """The test suite for test_atm_correction_ir.
-    """
-    loader = unittest.TestLoader()
-    mysuite = unittest.TestSuite()
-    mysuite.addTest(loader.loadTestsFromTestCase(TestAtmCorrection))
-
-    return mysuite
+        np.testing.assert_almost_equal(RES, atm_corr)
