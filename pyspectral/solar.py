@@ -28,6 +28,8 @@ Read solar irradiances and calculate solar flux.
 Module to read solar irradiance spectra and calculate the solar flux over
 various instrument bands given their relative spectral response functions
 """
+from __future__ import division
+from __future__ import print_function
 
 import numpy as np
 from pkg_resources import resource_filename
@@ -176,7 +178,7 @@ class SolarIrradianceSpectrum(object):
 
         start = wvl[0]
         end = wvl[-1]
-        # print "Start and end: ", start, end
+        # print ("Start and end: ", start, end)
         LOG.debug("Begin and end wavelength/wavenumber: %f %f ", start, end)
         dlambda = self._dlambda
         xspl = np.linspace(start, end, round((end - start) / self._dlambda) + 1)
